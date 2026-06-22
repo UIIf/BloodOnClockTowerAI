@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Круг ролей</title>
+<style>
+  :root{
+    --bg: #0f1117; --panel: #181b25; --panel-border: #2a2e3d;
+    --accent: #6c8cff; --accent2: #ff6c9c; --accent3: #ffb347;
+    --text: #e7e9f0; --muted: #8b8fa3;
+  }
+  *{ box-sizing: border-box; }
+  html,body{
+    margin:0; padding:0; height:100%;
+    background: radial-gradient(circle at 50% 40%, #1a1d2a, #0b0c12 70%);
+    color: var(--text);
+    font-family: "Segoe UI", Roboto, Arial, sans-serif;
+    overflow: hidden;
+  }
+  #app{ width:100%; height:100%; }
+
+  /* ── бургер-кнопка ── */
+  #burgerBtn{
+    position:fixed; top:16px; left:16px; z-index:200;
+    width:44px; height:44px; border-radius:12px;
+    background:rgba(24,27,37,.92); border:1px solid var(--panel-border);
+    backdrop-filter:blur(8px);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:5px; cursor:pointer; padding:0; transition:background .2s;
+  }
+  #burgerBtn:hover{ background:rgba(108,140,255,.25); border-color:var(--accent); }
+  #burgerBtn span{
+    display:block; width:20px; height:2px;
+    background:var(--text); border-radius:2px;
+    transition:transform .3s, opacity .3s, width .3s;
+    transform-origin:center;
+  }
+  /* крестик при открытом меню */
+  body.menu-open #burgerBtn span:nth-child(1){ transform:translateY(7px) rotate(45deg); }
+  body.menu-open #burgerBtn span:nth-child(2){ opacity:0; width:0; }
+  body.menu-open #burgerBtn span:nth-child(3){ transform:translateY(-7px) rotate(-45deg); }
+
+  /* ── оверлей-затемнение ── */
+  #overlay{
+    position:fixed; inset:0; z-index:100;
+    background:rgba(0,0,0,.55); backdrop-filter:blur(2px);
+    opacity:0; pointer-events:none;
+    transition:opacity .3s;
+  }
+  body.menu-open #overlay{ opacity:1; pointer-events:all; }
+
+  /* ── боковая панель ── */
+  #sidebar{
+    position:fixed; top:0; left:0; height:100%; z-index:150;
+    width:320px; background:var(--panel);
+    border-right:1px solid var(--panel-border);
+    padding:70px 18px 18px; overflow-y:auto;
+    transform:translateX(-100%);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);
+    box-shadow:4px 0 32px rgba(0,0,0,.5);
+  }
+  body.menu-open #sidebar{ transform:translateX(0); }
+
+  #sidebar h2{ margin:0 0 14px; font-size:18px; }
+  .section{
+    margin-bottom:20px; padding-bottom:16px;
+    border-bottom:1px solid var(--panel-border);
+  }
+  .section label{
+    display:block; font-size:12px; color:var(--muted);
+    margin-bottom:6px; text-transform:uppercase; letter-spacing:.5px;
+  }
+  .row{ display:flex; gap:8px; align-items:center; margin-bottom:10px; }
+  input[type=number], input[type=range], input[type=text], textarea, select{
+    width:100%; background:#0e1018; border:1px solid var(--panel-border);
+    color:var(--text); border-radius:6px; padding:8px;
+    font-size:13px; font-family:inherit;
+  }
+  textarea{ resize:vertical; min-height:90px; }
+  button{
+    background:var(--accent); color:#0b0c12; border:none;
+    padding:9px 12px; border-radius:6px; cursor:pointer;
+    font-weight:600; font-size:13px; transition:filter .15s;
+  }
+  button:hover{ filter:brightness(1.1); }
+  button.secondary{ background:transparent; border:1px solid var(--panel-border); color:var(--text); }
+  button.danger{ background:var(--accent2); color:#1a0a10; }
+  .full{ width:100%; }
+  .hint{ font-size:11px; color:var(--muted); line-height:1.4; margin-top:4px; }
+
+  .item-row{
+    display:flex; align-items:center; gap:8px;
+    background:#0e1018; border:1px solid var(--panel-border);
+    border-radius:6px; padding:6px; margin-bottom:6px;
+  }
+  .item-row img{ width:30px; height:30px; border-radius:50%; object-fit:cover; background:#222; flex-shrink:0; }
+  .item-row input[type=text]{ flex:1; padding:5px 7px; font-size:12px; }
+  .item-row button{ padding:5px 7px; font-size:11px; flex-shrink:0; }
+  #itemsList, #tagsList{ max-height:200px; overflow-y:auto; margin-bottom:10px; }
+
+  /* ── сцена ── */
+  #stage{
+    width:100%; height:100%; position:relative;
+    display:flex; align-items:center; justify-content:center;
+  }
+  #circleWrap{ position:relative; width:1px; height:1px; }
+  #circleRing{
+    position:absolute; top:0; left:0; transition:none;
+    /* CSS-переменные масштаба, выставляются из JS */
+    --av: 68px;   /* размер аватара */
+    --iw: 110px;  /* ширина элемента */
+    --fs: 11px;   /* базовый шрифт */
+    --gap: 5px;   /* зазор между строками */
+    --bd: 22px;   /* размер бейджа */
+  }
+  .ring-guide{
+    position:absolute; inset:0; border:1px dashed rgba(255,255,255,.08);
+    border-radius:50%; pointer-events:none;
+  }
+  .center-dot{
+    position:absolute; width:8px; height:8px; background:var(--accent);
+    border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%);
+    box-shadow:0 0 18px 4px rgba(108,140,255,.6); pointer-events:none;
+  }
+
+  /* ── элемент на круге ── */
+  .circle-item{ position:absolute; top:50%; left:50%; width:0; height:0; }
+  .circle-item .item-inner{
+    position:absolute;
+    width: var(--iw);
+    transform:translate(-50%,-50%);
+    display:flex; flex-direction:column; align-items:center;
+    gap: var(--gap);
+    user-select:none;
+  }
+
+  /* ── аватар ── */
+  .avatar-box{ position:relative; display:inline-block; }
+  .avatar-box img{
+    width: var(--av); height: var(--av);
+    border-radius:50%; object-fit:cover;
+    background:#222; border:2px solid var(--panel-border);
+    box-shadow:0 4px 14px rgba(0,0,0,.5);
+    transition:transform .15s, border-color .15s;
+    display:block;
+  }
+  .circle-item:hover .avatar-box img{ transform:scale(1.06); border-color:var(--accent); }
+
+  /* ── бейдж номера ── */
+  .slot-number-badge{
+    position:absolute; top:-5px; right:-5px;
+    width: var(--bd); height: var(--bd); border-radius:50%;
+    background:var(--accent); color:#0b0c12;
+    font-weight:700;
+    font-size: calc(var(--bd) * 0.5);
+    display:flex; align-items:center; justify-content:center;
+    border:2px solid #0b0c12; z-index:2;
+  }
+
+  /* ── кнопка убийства ── */
+  .kill-btn{
+    position:absolute; bottom:-5px; left:-5px;
+    width: var(--bd); height: var(--bd); border-radius:50%;
+    background:#1a1d2a; border:2px solid var(--panel-border);
+    color:var(--text);
+    font-size: calc(var(--bd) * 0.5);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; padding:0; z-index:3;
+  }
+  .kill-btn:hover{ filter:brightness(1.3); }
+  .circle-item.dead .kill-btn{ background:var(--accent2); border-color:var(--accent2); color:#1a0a10; }
+
+  /* ── мёртвые ── */
+  .circle-item.dead .avatar-box,
+  .circle-item.dead .role-select,
+  .circle-item.dead .tags-area{
+    filter:grayscale(1) brightness(.45);
+    opacity:.5;
+  }
+
+  /* ── выбор роли ── */
+  .role-select{
+    width: var(--iw); font-size: var(--fs);
+    text-align:center; text-align-last:center;
+    color:var(--text); background:rgba(10,11,17,.9);
+    border:1px solid var(--panel-border);
+    padding:2px 4px; border-radius:10px; cursor:pointer;
+    /* жирный шрифт чтобы лучше читалось */
+    font-weight:600;
+    text-shadow: 0 1px 3px rgba(0,0,0,.8);
+  }
+
+  /* ── теги ── */
+  .tags-area{ width:var(--iw); display:flex; flex-direction:column; align-items:center; gap:3px; }
+  .tags-pills{ display:flex; flex-wrap:wrap; gap:3px; justify-content:center; }
+  .tag-pill{
+    display:inline-flex; align-items:center; gap:2px;
+    background:rgba(255,179,71,.18); border:1px solid var(--accent3);
+    color:var(--accent3); font-weight:700;
+    font-size: calc(var(--fs) - 1px);
+    padding:1px 5px; border-radius:10px; white-space:nowrap;
+    /* тень для читаемости на любом фоне */
+    text-shadow: 0 1px 4px rgba(0,0,0,.9);
+  }
+  .tag-pill .remove-tag{
+    background:none; border:none; color:var(--accent3);
+    font-size: calc(var(--fs) - 1px); cursor:pointer;
+    padding:0; line-height:1; font-weight:900; min-width:unset;
+  }
+  .tag-pill .remove-tag:hover{ filter:brightness(1.5); }
+
+  /* компактный режим убран — теги всегда видны как текст */
+
+  .add-tag-select{
+    font-size: calc(var(--fs) - 1px); width:100%;
+    text-align:center; text-align-last:center; color:var(--muted);
+    background:rgba(10,11,17,.75); border:1px dashed var(--panel-border);
+    padding:1px 3px; border-radius:8px; cursor:pointer;
+  }
+
+  /* ── панель управления ── */
+  #rotateControls{
+    position:absolute; bottom:24px; left:50%; transform:translateX(-50%);
+    background:rgba(24,27,37,.85); border:1px solid var(--panel-border);
+    border-radius:30px; padding:10px 18px;
+    display:flex; align-items:center; gap:12px;
+    backdrop-filter:blur(6px);
+  }
+  #rotateControls button{ padding:8px 14px; font-size:16px; }
+
+  ::-webkit-scrollbar{ width:8px; }
+  ::-webkit-scrollbar-thumb{ background:#2a2e3d; border-radius:4px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- бургер-кнопка -->
+  <button id="burgerBtn" aria-label="Меню настроек">
+    <span></span><span></span><span></span>
+  </button>
+
+  <!-- затемнение фона -->
+  <div id="overlay"></div>
+
+  <aside id="sidebar">
+    <h2>⚙ Настройки круга</h2>
+
+    <div class="section">
+      <label>Количество игроков</label>
+      <div class="row">
+        <input type="number" id="countInput" min="1" max="30" value="6">
+        <button id="applyCount">Применить</button>
+      </div>
+      <div class="hint">Размер элементов и радиус автоматически подстраиваются под количество игроков.</div>
+    </div>
+
+    <div class="section">
+      <label>Радиус круга (px)</label>
+      <input type="range" id="radiusInput" min="100" max="700" value="260">
+    </div>
+
+    <div class="section">
+      <label>Роли (с изображениями)</label>
+      <div id="itemsList"></div>
+      <div class="row">
+        <button id="addItemBtn" class="secondary full">+ Добавить роль</button>
+      </div>
+      <div class="row">
+        <label style="margin:0;flex:1;">
+          <span style="display:block;margin-bottom:4px;font-size:11px;color:var(--muted);">Загрузить картинки — имя файла станет названием роли</span>
+          <input type="file" id="fileInput" accept="image/*" multiple>
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <label>Тэги / состояния</label>
+      <div id="tagsList"></div>
+      <div class="row">
+        <button id="addTagBtn" class="secondary full">+ Добавить тэг</button>
+      </div>
+      <div class="hint">Каждому игроку можно назначить любое количество тэгов. При 10+ игроках тэги показываются в свёрнутом виде — наведите на игрока чтобы раскрыть.</div>
+    </div>
+
+    <div class="section">
+      <label>Импорт / экспорт ролей (JSON)</label>
+      <textarea id="jsonArea" placeholder='[{"name":"Шериф","img":"url или data:..."}, ...]'></textarea>
+      <div class="row" style="margin-top:8px;">
+        <button id="loadJsonBtn" class="secondary full">Загрузить</button>
+        <button id="exportJsonBtn" class="secondary full">Выгрузить</button>
+      </div>
+    </div>
+
+    <div class="section" style="border-bottom:none;">
+      <button id="resetBtn" class="danger full">Сбросить к примеру</button>
+    </div>
+  </aside>
+
+  <main id="stage">
+    <div id="circleWrap">
+      <div class="ring-guide"></div>
+      <div class="center-dot"></div>
+      <div id="circleRing"></div>
+    </div>
+    <div id="rotateControls">
+      <button id="zoomOut" title="Уменьшить">−</button>
+      <button id="zoomIn"  title="Увеличить">+</button>
+      <div style="width:1px;height:24px;background:var(--panel-border);margin:0 2px;"></div>
+      <button id="rotLeft" title="Против часовой">⟲</button>
+      <button id="rotRight" title="По часовой">⟳</button>
+    </div>
+  </main>
+
+</div>
+<script>
+(function(){
+
+  function placeholderImg(letter){
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+      <rect width="100" height="100" fill="#2a2e3d"/>
+      <text x="50" y="58" font-size="40" text-anchor="middle" fill="#8b8fa3" font-family="Arial">${letter}</text>
+    </svg>`;
+    return "data:image/svg+xml;base64," + btoa(unescape(encodeURIComponent(svg)));
+  }
+
+  // ── масштаб в зависимости от числа игроков ──
+  function scaleForCount(n){
+    if(n <= 8)  return { av:68, iw:110, fs:11, bd:22, gap:5 };
+    if(n <= 11) return { av:54, iw:90,  fs:10, bd:19, gap:4 };
+    if(n <= 15) return { av:44, iw:76,  fs:9.5,bd:16, gap:3 };
+                return { av:36, iw:64,  fs:9,  bd:14, gap:3 };
+  }
+
+  // минимальный радиус, чтобы элементы не перекрывались
+  function minRadius(n, iw){
+    if(n <= 1) return 0;
+    return Math.ceil((iw + 18) * n / (2 * Math.PI));
+  }
+
+  // ── состояние ──
+  let pool = [
+    { name:"Шериф",     img:placeholderImg("Ш") },
+    { name:"Доктор",    img:placeholderImg("Д") },
+    { name:"Маг",       img:placeholderImg("М") },
+    { name:"Воин",      img:placeholderImg("В") },
+    { name:"Разведчик", img:placeholderImg("Р") },
+    { name:"Торговец",  img:placeholderImg("Т") },
+    { name:"Кузнец",    img:placeholderImg("К") },
+    { name:"Жрец",      img:placeholderImg("Ж") },
+  ];
+  let tagPool = [
+    { name:"Отравлен" }, { name:"Пьяница" },
+    { name:"Проклят" },  { name:"Подозреваемый" },
+  ];
+
+  let count       = 6;
+  let radius      = 260; // пользовательский
+  let rotation    = 90;
+  let currentSlot = 0;
+  let assignments = [];
+  let alive       = [];
+  let slotTags    = [];
+
+  const itemsListEl   = document.getElementById('itemsList');
+  const tagsListEl    = document.getElementById('tagsList');
+  const countInput    = document.getElementById('countInput');
+  const applyCountBtn = document.getElementById('applyCount');
+  const radiusInput   = document.getElementById('radiusInput');
+  const addItemBtn    = document.getElementById('addItemBtn');
+  const addTagBtn     = document.getElementById('addTagBtn');
+  const fileInput     = document.getElementById('fileInput');
+  const jsonArea      = document.getElementById('jsonArea');
+  const loadJsonBtn   = document.getElementById('loadJsonBtn');
+  const exportJsonBtn = document.getElementById('exportJsonBtn');
+  const resetBtn      = document.getElementById('resetBtn');
+  const circleRing    = document.getElementById('circleRing');
+  const rotLeftBtn    = document.getElementById('rotLeft');
+  const rotRightBtn   = document.getElementById('rotRight');
+
+  function renderItemsList(){
+    itemsListEl.innerHTML = '';
+    pool.forEach((item, idx) => {
+      const row = document.createElement('div');
+      row.className = 'item-row';
+      const img = document.createElement('img'); img.src = item.img;
+      row.appendChild(img);
+      const ni = document.createElement('input'); ni.type='text'; ni.value=item.name;
+      ni.addEventListener('input', () => { pool[idx].name=ni.value; renderCircle(); });
+      row.appendChild(ni);
+      const del = document.createElement('button'); del.textContent='✕';
+      del.addEventListener('click', () => { pool.splice(idx,1); renderItemsList(); renderCircle(); });
+      row.appendChild(del);
+      itemsListEl.appendChild(row);
+    });
+  }
+
+  function renderTagsList(){
+    tagsListEl.innerHTML = '';
+    tagPool.forEach((tag, idx) => {
+      const row = document.createElement('div'); row.className='item-row';
+      const ni = document.createElement('input'); ni.type='text'; ni.value=tag.name;
+      ni.addEventListener('input', () => { tagPool[idx].name=ni.value; renderCircle(); });
+      row.appendChild(ni);
+      const del = document.createElement('button'); del.textContent='✕';
+      del.addEventListener('click', () => { tagPool.splice(idx,1); renderTagsList(); renderCircle(); });
+      row.appendChild(del);
+      tagsListEl.appendChild(row);
+    });
+  }
+
+  function syncState(n, source){
+    const na=[], nl=[], nt=[];
+    for(let i=0;i<n;i++){
+      let v=assignments[i];
+      if(v===undefined||v>=source.length) v=i%source.length;
+      na.push(v);
+      nl.push(alive[i]===undefined ? true : alive[i]);
+      const ex = slotTags[i] instanceof Set ? slotTags[i] : new Set();
+      nt.push(new Set([...ex].filter(ti=>ti<tagPool.length)));
+    }
+    assignments=na; alive=nl; slotTags=nt;
+  }
+
+  function renderCircle(){
+    circleRing.innerHTML = '';
+
+    const n = Math.max(1, count);
+    const scale = scaleForCount(n);
+
+    // эффективный радиус: не меньше минимального для данного масштаба
+    const rMin = minRadius(n, scale.iw);
+    const r = Math.max(radius, rMin);
+
+    // применяем CSS-переменные масштаба
+    circleRing.style.setProperty('--av', scale.av+'px');
+    circleRing.style.setProperty('--iw', scale.iw+'px');
+    circleRing.style.setProperty('--fs', scale.fs+'px');
+    circleRing.style.setProperty('--bd', scale.bd+'px');
+    circleRing.style.setProperty('--gap', scale.gap+'px');
+    circleRing.classList.remove('compact'); // нет compact-режима
+
+    circleRing.style.width  = (r*2)+'px';
+    circleRing.style.height = (r*2)+'px';
+    circleRing.style.marginLeft = (-r)+'px';
+    circleRing.style.marginTop  = (-r)+'px';
+
+    const source = pool.length ? pool : [{name:'—', img:placeholderImg('?')}];
+    syncState(n, source);
+
+    for(let i=0; i<n; i++){
+      const si = i;
+      const data = source[assignments[si]];
+      const angle = (360/n)*i;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'circle-item'+(alive[si] ? '' : ' dead');
+      wrap.style.transform = `rotate(${angle}deg) translate(${r}px) rotate(${-angle}deg)`;
+
+      const inner = document.createElement('div');
+      inner.className = 'item-inner';
+      inner.style.transform = `translate(-50%,-50%) rotate(${-rotation}deg)`;
+
+      // ── аватар ──
+      const avatarBox = document.createElement('div');
+      avatarBox.className = 'avatar-box';
+
+      const img = document.createElement('img');
+      img.src=data.img; img.alt=data.name;
+      avatarBox.appendChild(img);
+
+      const badge = document.createElement('span');
+      badge.className='slot-number-badge';
+      badge.textContent=si+1;
+      avatarBox.appendChild(badge);
+
+      const killBtn = document.createElement('button');
+      killBtn.className='kill-btn';
+      killBtn.textContent=alive[si]?'☠':'✓';
+      killBtn.title=alive[si]?'Убить':'Оживить';
+      killBtn.addEventListener('mousedown',e=>e.stopPropagation());
+      killBtn.addEventListener('click',e=>{
+        e.stopPropagation();
+        alive[si]=!alive[si];
+        wrap.classList.toggle('dead',!alive[si]);
+        killBtn.textContent=alive[si]?'☠':'✓';
+        killBtn.title=alive[si]?'Убить':'Оживить';
+      });
+      avatarBox.appendChild(killBtn);
+
+      // ── роль ──
+      const roleSelect = document.createElement('select');
+      roleSelect.className='role-select';
+      source.forEach((role,ri)=>{
+        const opt=document.createElement('option');
+        opt.value=ri; opt.textContent=role.name;
+        if(ri===assignments[si]) opt.selected=true;
+        roleSelect.appendChild(opt);
+      });
+      roleSelect.addEventListener('mousedown',e=>e.stopPropagation());
+      roleSelect.addEventListener('click',e=>e.stopPropagation());
+      roleSelect.addEventListener('change',()=>{
+        assignments[si]=parseInt(roleSelect.value,10);
+        img.src=source[assignments[si]].img;
+        img.alt=source[assignments[si]].name;
+      });
+
+      // ── теги ──
+      const tagsArea = document.createElement('div');
+      tagsArea.className='tags-area';
+
+      const tagsPills = document.createElement('div');
+      tagsPills.className='tags-pills';
+
+      // счётчик тэгов убран — пилюли всегда видны
+
+      function rebuildPills(){
+        tagsPills.innerHTML='';
+        slotTags[si].forEach(ti=>{
+          if(ti>=tagPool.length) return;
+          const pill=document.createElement('span');
+          pill.className='tag-pill';
+          pill.textContent=tagPool[ti].name;
+          const rm=document.createElement('button');
+          rm.className='remove-tag'; rm.textContent='×';
+          rm.addEventListener('mousedown',e=>e.stopPropagation());
+          rm.addEventListener('click',e=>{
+            e.stopPropagation();
+            slotTags[si].delete(ti);
+            rebuildPills(); rebuildAddSelect();
+          });
+          pill.appendChild(rm);
+          tagsPills.appendChild(pill);
+        });
+      }
+
+      const addTagSelect = document.createElement('select');
+      addTagSelect.className='add-tag-select';
+
+      function rebuildAddSelect(){
+        addTagSelect.innerHTML='';
+        const available=tagPool.filter((_,ti)=>!slotTags[si].has(ti));
+        if(available.length===0){ addTagSelect.style.display='none'; return; }
+        addTagSelect.style.display='';
+        const ph=document.createElement('option');
+        ph.value=''; ph.textContent='+ тэг…'; ph.disabled=true; ph.selected=true;
+        addTagSelect.appendChild(ph);
+        tagPool.forEach((tag,ti)=>{
+          if(slotTags[si].has(ti)) return;
+          const opt=document.createElement('option'); opt.value=ti; opt.textContent=tag.name;
+          addTagSelect.appendChild(opt);
+        });
+      }
+
+      addTagSelect.addEventListener('mousedown',e=>e.stopPropagation());
+      addTagSelect.addEventListener('click',e=>e.stopPropagation());
+      addTagSelect.addEventListener('change',()=>{
+        const ti=parseInt(addTagSelect.value,10);
+        if(!isNaN(ti)){ slotTags[si].add(ti); }
+        rebuildPills(); rebuildAddSelect();
+      });
+
+      rebuildPills(); rebuildAddSelect();
+
+      tagsArea.appendChild(tagsPills);
+      tagsArea.appendChild(addTagSelect);
+
+      inner.appendChild(avatarBox);
+      inner.appendChild(roleSelect);
+      inner.appendChild(tagsArea);
+      wrap.appendChild(inner);
+      circleRing.appendChild(wrap);
+    }
+
+    snapToCurrentSlot(r);
+  }
+
+  function applyRotation(r){
+    circleRing.style.transform = `rotate(${rotation}deg)`;
+    document.querySelectorAll('.item-inner').forEach(el=>{
+      el.style.transform=`translate(-50%,-50%) rotate(${-rotation}deg)`;
+    });
+  }
+
+  function snapToCurrentSlot(r){
+    const n=Math.max(1,count);
+    rotation = 90 - (360/n)*currentSlot;
+    applyRotation(r);
+  }
+
+  // ── бургер-меню ──
+  const burgerBtn = document.getElementById('burgerBtn');
+  const overlay   = document.getElementById('overlay');
+
+  function toggleMenu(){ document.body.classList.toggle('menu-open'); }
+  function closeMenu(){  document.body.classList.remove('menu-open'); }
+
+  burgerBtn.addEventListener('click', toggleMenu);
+  overlay.addEventListener('click', closeMenu);
+  document.addEventListener('keydown', e => { if(e.key==='Escape') closeMenu(); });
+
+  const zoomInBtn  = document.getElementById('zoomIn');
+  const zoomOutBtn = document.getElementById('zoomOut');
+  const circleWrap = document.getElementById('circleWrap');
+
+  let zoom = 1;
+  const ZOOM_STEP = 0.15;
+  const ZOOM_MIN  = 0.3;
+  const ZOOM_MAX  = 2.5;
+
+  function applyZoom(){
+    circleWrap.style.transform = `scale(${zoom})`;
+  }
+  zoomInBtn.addEventListener('click',  () => { zoom = Math.min(ZOOM_MAX, parseFloat((zoom+ZOOM_STEP).toFixed(2))); applyZoom(); });
+  zoomOutBtn.addEventListener('click', () => { zoom = Math.max(ZOOM_MIN, parseFloat((zoom-ZOOM_STEP).toFixed(2))); applyZoom(); });
+
+  // зум колесом мыши над сценой
+  document.getElementById('stage').addEventListener('wheel', e => {
+    e.preventDefault();
+    zoom = e.deltaY < 0
+      ? Math.min(ZOOM_MAX, parseFloat((zoom+ZOOM_STEP).toFixed(2)))
+      : Math.max(ZOOM_MIN, parseFloat((zoom-ZOOM_STEP).toFixed(2)));
+    applyZoom();
+  }, { passive: false });
+
+  rotLeftBtn.addEventListener('click',()=>{
+    currentSlot=(currentSlot-1+count)%count; snapToCurrentSlot();
+  });
+  rotRightBtn.addEventListener('click',()=>{
+    currentSlot=(currentSlot+1)%count; snapToCurrentSlot();
+  });
+
+  applyCountBtn.addEventListener('click',()=>{
+    const v=parseInt(countInput.value,10);
+    count=isNaN(v)||v<1?1:v;
+    currentSlot=0;
+    // авто-подбор радиуса если нужно
+    const sc=scaleForCount(count);
+    const rMin=minRadius(count,sc.iw);
+    if(radius < rMin){
+      radius=rMin;
+      radiusInput.value=rMin;
+    }
+    renderCircle();
+  });
+  countInput.addEventListener('keydown',e=>{ if(e.key==='Enter') applyCountBtn.click(); });
+
+  radiusInput.addEventListener('input',()=>{
+    radius=parseInt(radiusInput.value,10);
+    renderCircle();
+  });
+
+  addItemBtn.addEventListener('click',()=>{
+    pool.push({name:'Новая роль',img:placeholderImg('?')});
+    renderItemsList(); renderCircle();
+  });
+  fileInput.addEventListener('change',e=>{
+    const files=Array.from(e.target.files||[]);
+    let pending=files.length; if(!pending) return;
+    files.forEach(file=>{
+      const reader=new FileReader();
+      reader.onload=ev=>{
+        pool.push({name:file.name.replace(/\.[^/.]+$/,''),img:ev.target.result});
+        if(--pending===0){ renderItemsList(); renderCircle(); }
+      };
+      reader.readAsDataURL(file);
+    });
+    fileInput.value='';
+  });
+
+  addTagBtn.addEventListener('click',()=>{
+    tagPool.push({name:'Новый тэг'});
+    renderTagsList(); renderCircle();
+  });
+
+  loadJsonBtn.addEventListener('click',()=>{
+    try{
+      const parsed=JSON.parse(jsonArea.value);
+      if(!Array.isArray(parsed)) throw new Error('Ожидается массив');
+      pool=parsed.map(it=>({name:it.name||it.role||'—',img:it.img||it.image||placeholderImg('?')}));
+      renderItemsList(); renderCircle();
+    }catch(err){ alert('Ошибка JSON: '+err.message); }
+  });
+  exportJsonBtn.addEventListener('click',()=>{ jsonArea.value=JSON.stringify(pool,null,2); });
+
+  resetBtn.addEventListener('click',()=>{
+    pool=[
+      {name:"Шериф",     img:placeholderImg("Ш")},
+      {name:"Доктор",    img:placeholderImg("Д")},
+      {name:"Маг",       img:placeholderImg("М")},
+      {name:"Воин",      img:placeholderImg("В")},
+      {name:"Разведчик", img:placeholderImg("Р")},
+      {name:"Торговец",  img:placeholderImg("Т")},
+      {name:"Кузнец",    img:placeholderImg("К")},
+      {name:"Жрец",      img:placeholderImg("Ж")},
+    ];
+    tagPool=[{name:"Отравлен"},{name:"Пьяница"},{name:"Проклят"},{name:"Подозреваемый"}];
+    count=6; radius=260; rotation=90; currentSlot=0;
+    assignments=[]; alive=[]; slotTags=[];
+    countInput.value=6; radiusInput.value=260;
+    renderItemsList(); renderTagsList(); renderCircle();
+  });
+
+  // init
+  countInput.value=count; radiusInput.value=radius;
+  renderItemsList(); renderTagsList(); renderCircle();
+
+})();
+</script>
+</body>
+</html>
