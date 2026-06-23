@@ -274,7 +274,7 @@
   #layoutIndicator.visible{ opacity:1; }
 
   /* кнопки поворота скрыты в rect-режиме, кнопки прямоугольника — в круговом */
-  body.grid-mode #rotateControls .rotate-only{ opacity:.3; pointer-events:none; }
+  /* rotate-only кнопки работают в обоих режимах */
   .rect-only{ display:none !important; }
   body.grid-mode .rect-only{ display:block !important; }
   body.grid-mode .rect-only.row{ display:flex !important; }
@@ -319,7 +319,122 @@
   body.grid-mode.menu-open #rectBorder{ display:block; opacity:1; }
   ::-webkit-scrollbar-thumb{ background:#2a2e3d; border-radius:4px; }
 
+  /* ── панель порядка ролей ── */
+  #orderPanel{
+    position:fixed; left:16px; top:50%; transform:translateY(-50%);
+    z-index:90;
+    background:rgba(24,27,37,.88); border:1px solid var(--panel-border);
+    border-radius:12px; padding:10px 14px;
+    backdrop-filter:blur(8px);
+    min-width:140px; max-width:200px;
+    display:none;
+  }
+  #orderPanel.visible{ display:block; }
+  body.menu-open #orderPanel{ display:none !important; }
+  #orderPanel h3{
+    margin:0 0 8px; font-size:12px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.5px;
+  }
+  #orderList{
+    list-style:none; margin:0; padding:0;
+    display:flex; flex-direction:column; gap:4px;
+  }
+  #orderList li{
+    display:flex; align-items:center; gap:7px;
+    font-size:13px; font-weight:600; color:var(--text);
+    padding:2px 0;
+  }
+  #orderList li .order-num{
+    font-size:11px; color:var(--muted); min-width:16px; text-align:right;
+  }
+  #orderList li .order-dot{
+    width:8px; height:8px; border-radius:50%; flex-shrink:0;
+  }
+
+  /* ── карточка ночного порядка (двусторонняя) ── */
+  #nightCard{
+    position:fixed; left:16px; top:50%; transform:translateY(-50%);
+    z-index:90;
+    width:170px;
+    display:none;
+    cursor:pointer;
+    user-select:none;
+  }
+  #nightCard.visible{ display:block; }
+  body.menu-open #nightCard{ display:none !important; }
+
+  /* перспектива для flip-эффекта */
+  #nightCardInner{
+    position:relative;
+    width:100%;
+    transition: transform 0.5s cubic-bezier(.4,0,.2,1);
+    transform-style: preserve-3d;
+  }
+  #nightCard.flipped #nightCardInner{ transform: rotateY(180deg); }
+
+  .night-card-face{
+    background:rgba(24,27,37,.92); border:1px solid var(--panel-border);
+    border-radius:12px; padding:10px 14px;
+    backdrop-filter:blur(8px);
+    max-height:calc(100vh - 160px); overflow-y:auto;
+    -webkit-backface-visibility:hidden;
+    backface-visibility:hidden;
+  }
+  /* задняя сторона повёрнута */
+  #nightCardBack{
+    position:absolute; top:0; left:0; width:100%;
+    transform: rotateY(180deg);
+  }
+  /* подсветка при наведении */
+  #nightCard:hover .night-card-face{
+    border-color: var(--accent);
+    box-shadow: 0 0 12px rgba(108,140,255,.25);
+  }
+
+  .night-card-header{
+    display:flex; align-items:center; justify-content:space-between;
+    margin-bottom:8px;
+    position:sticky; top:0;
+    background:rgba(24,27,37,.95); padding-bottom:4px;
+  }
+  .night-card-title{
+    font-size:11px; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.5px;
+    font-weight:700;
+  }
+  .night-card-flip-hint{
+    font-size:10px; color:var(--accent); opacity:.7;
+  }
+  .night-list{
+    list-style:none; margin:0; padding:0;
+    display:flex; flex-direction:column; gap:3px;
+  }
+  .night-list li{
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; font-weight:600; color:var(--text);
+    padding:1px 0;
+  }
+  .night-list li .order-num{ font-size:10px; color:var(--muted); min-width:14px; text-align:right; }
+  .night-list li .order-dot{ width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+
+  /* редактор порядка в сайдбаре */
+  .night-order-editor{ display:flex; flex-direction:column; gap:4px; margin-bottom:8px; max-height:180px; overflow-y:auto; }
+  .night-order-row{
+    display:flex; align-items:center; gap:6px;
+    background:#0e1018; border:1px solid var(--panel-border);
+    border-radius:6px; padding:4px 6px;
+  }
+  .night-order-row select{ flex:1; font-size:12px; background:#0e1018; border:none; color:var(--text); padding:2px; }
+  .night-order-row button{ padding:3px 6px; font-size:11px; flex-shrink:0; }
+  .night-order-row .drag-handle{ cursor:grab; color:var(--muted); font-size:14px; line-height:1; flex-shrink:0; }
+
+  /* drag-over highlight */
+  .night-order-row.drag-over-top{ border-top:2px solid var(--accent); }
+  .night-order-row.drag-over-bot{ border-bottom:2px solid var(--accent); }
+
   /* ── drag-and-drop в rect-режиме ── */
+  /* в прямоугольном режиме перетаскивание отключено */
+  body.grid-mode .circle-item { cursor: default !important; }
   .circle-item.drag-over .avatar-box img{
     border-color: var(--accent) !important;
     box-shadow: 0 0 0 3px rgba(108,140,255,.5), 0 4px 14px rgba(0,0,0,.5);
@@ -372,6 +487,8 @@
     box-shadow:0 8px 32px rgba(0,0,0,.7);
     overflow:hidden;
     display:none;
+    max-height:60vh;
+    overflow-y:auto;
   }
   .role-dropdown.open{ display:block; }
 
@@ -487,9 +604,32 @@
         <button id="rectHPlus"  class="secondary">Больше ▼</button>
       </div>
       <div class="row" style="justify-content:space-between;">
-        <span style="font-size:12px;color:var(--muted);min-width:60px;">Позиция</span>
+        <span style="font-size:12px;color:var(--muted);min-width:60px;">По вертикали</span>
         <button id="rectYMinus" class="secondary">▲ Выше</button>
         <button id="rectYPlus"  class="secondary">Ниже ▼</button>
+      </div>
+      <div class="row" style="justify-content:space-between;">
+        <span style="font-size:12px;color:var(--muted);min-width:60px;">По горизонтали</span>
+        <button id="rectXMinus" class="secondary">◀ Левее</button>
+        <button id="rectXPlus"  class="secondary">Правее ▶</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <label>🌙 Порядок первой ночи</label>
+      <div class="hint" style="margin-bottom:6px;">Список ролей, которые действуют в первую ночь</div>
+      <div id="night1Editor" class="night-order-editor"></div>
+      <div class="row">
+        <button id="addNight1Btn" class="secondary full">+ Добавить роль</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <label>🌙 Порядок каждой ночи</label>
+      <div class="hint" style="margin-bottom:6px;">Список ролей, которые действуют каждую ночь</div>
+      <div id="nightNEditor" class="night-order-editor"></div>
+      <div class="row">
+        <button id="addNightNBtn" class="secondary full">+ Добавить роль</button>
       </div>
     </div>
 
@@ -516,6 +656,32 @@
     <div id="layoutIndicator">⬛ Прямоугольник</div>
     <div id="rectBorder"></div>
   </main>
+  <!-- двусторонняя карточка ночного порядка -->
+  <div id="nightCard">
+    <div id="nightCardInner">
+      <!-- лицевая: первая ночь -->
+      <div class="night-card-face" id="nightCardFront">
+        <div class="night-card-header">
+          <span class="night-card-title">🌙 Первая ночь</span>
+          <span class="night-card-flip-hint">↺</span>
+        </div>
+        <ul id="night1List" class="night-list"></ul>
+      </div>
+      <!-- задняя: каждая ночь -->
+      <div class="night-card-face night-card-back" id="nightCardBack">
+        <div class="night-card-header">
+          <span class="night-card-title">🌙 Каждая ночь</span>
+          <span class="night-card-flip-hint">↺</span>
+        </div>
+        <ul id="nightNList" class="night-list"></ul>
+      </div>
+    </div>
+  </div>
+
+  <div id="orderPanel">
+    <h3>Порядок ролей</h3>
+    <ul id="orderList"></ul>
+  </div>
 
 </div>
 <script>
@@ -569,6 +735,11 @@
   let rectWOffset = 0;
   let rectHOffset = 0;
   let rectYOffset = 0; // смещение по вертикали (px, положительное = вниз)
+  let rectXOffset = 0; // смещение по горизонтали (px, положительное = вправо)
+  let nightCardLeftPad = 0; // отступ слева от карточки порядка ночи
+  let roleOrder   = []; // список строк — порядок ролей из JSON
+  let nightOrder1 = []; // порядок первой ночи: [{name, category}]
+  let nightOrderN = []; // порядок каждой ночи: [{name, category}]
 
   const itemsListEl   = document.getElementById('itemsList');
   const tagsListEl    = document.getElementById('tagsList');
@@ -659,6 +830,176 @@
     assignments=na; alive=nl; slotTags=nt;
   }
 
+  function renderOrderPanel(){
+    const panel = document.getElementById('orderPanel');
+    const list  = document.getElementById('orderList');
+    list.innerHTML = '';
+    if(!roleOrder || roleOrder.length === 0){ panel.classList.remove('visible'); return; }
+    roleOrder.forEach((item, i) => {
+      const li = document.createElement('li');
+      const num = document.createElement('span');
+      num.className = 'order-num';
+      num.textContent = (i+1)+'.';
+      li.appendChild(num);
+      const dot = document.createElement('span');
+      const cat = item.category || 'citizen';
+      dot.className = 'order-dot';
+      dot.style.background = `var(--cat-${cat})`;
+      li.appendChild(dot);
+      const name = document.createElement('span');
+      name.textContent = item.name;
+      li.appendChild(name);
+      list.appendChild(li);
+    });
+    panel.classList.add('visible');
+  }
+
+  // ── рендер карточки ночного порядка ──
+  function renderNightPanels(){
+    const card = document.getElementById('nightCard');
+    const hasAny = (nightOrder1 && nightOrder1.length > 0) || (nightOrderN && nightOrderN.length > 0);
+    if(!hasAny){ card.classList.remove('visible'); return; }
+    card.classList.add('visible');
+
+    [
+      { arr: nightOrder1, listId: 'night1List' },
+      { arr: nightOrderN, listId: 'nightNList' },
+    ].forEach(({ arr, listId }) => {
+      const list = document.getElementById(listId);
+      list.innerHTML = '';
+      (arr || []).forEach((item, i) => {
+        const li  = document.createElement('li');
+        const num = document.createElement('span');
+        num.className = 'order-num'; num.textContent = (i+1)+'.';
+        li.appendChild(num);
+        const dot = document.createElement('span');
+        dot.className = 'order-dot';
+        dot.style.background = `var(--cat-${item.category||'citizen'})`;
+        li.appendChild(dot);
+        const name = document.createElement('span');
+        name.textContent = item.name;
+        li.appendChild(name);
+        list.appendChild(li);
+      });
+    });
+
+    // обновляем смещение прямоугольника с учётом ширины карточки
+    updateRectLeftOffset();
+  }
+
+  // ── flip карточки по клику ──
+  let nightCardFlipped = false;
+  document.getElementById('nightCard').addEventListener('click', () => {
+    nightCardFlipped = !nightCardFlipped;
+    document.getElementById('nightCard').classList.toggle('flipped', nightCardFlipped);
+  });
+
+  // ── смещение левой границы прямоугольника правее карточки ──
+  // карточка: left=16px, width=170px → правый край = 186px + 16px зазор = 202px
+  const NIGHT_CARD_LEFT  = 16;
+  const NIGHT_CARD_WIDTH = 170;
+  const NIGHT_CARD_GAP   = 16;
+  const NIGHT_CARD_RIGHT = NIGHT_CARD_LEFT + NIGHT_CARD_WIDTH + NIGHT_CARD_GAP; // 202px
+
+  function updateRectLeftOffset(){
+    const card = document.getElementById('nightCard');
+    nightCardLeftPad = card.classList.contains('visible') ? NIGHT_CARD_RIGHT : 0;
+    renderCircle();
+  }
+
+  // ── рендер редакторов в сайдбаре ──
+  function renderNightEditors(){
+    [
+      { arr: nightOrder1, editorId: 'night1Editor', setter: v => { nightOrder1 = v; } },
+      { arr: nightOrderN, editorId: 'nightNEditor', setter: v => { nightOrderN = v; } },
+    ].forEach(({ arr, editorId, setter }) => {
+      const editor = document.getElementById(editorId);
+      editor.innerHTML = '';
+      arr.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.className = 'night-order-row';
+        row.draggable = true;
+
+        const handle = document.createElement('span');
+        handle.className = 'drag-handle'; handle.textContent = '⠿';
+        row.appendChild(handle);
+
+        const sel = document.createElement('select');
+        // опции: все роли из pool
+        const catColors = { citizen:'var(--cat-citizen)', outcast:'var(--cat-outcast)', minion:'var(--cat-minion)', demon:'var(--cat-demon)' };
+        const grouped = {};
+        pool.forEach(r => { const c = r.category||'citizen'; if(!grouped[c]) grouped[c]=[]; grouped[c].push(r); });
+        // сначала добавляем текущее значение если не в pool
+        const allNames = pool.map(r=>r.name);
+        if(!allNames.includes(item.name)){
+          const opt = document.createElement('option');
+          opt.value = JSON.stringify({name:item.name, category:item.category||'citizen'});
+          opt.textContent = item.name;
+          opt.selected = true;
+          sel.appendChild(opt);
+        }
+        Object.entries(grouped).forEach(([cat, roles]) => {
+          const grp = document.createElement('optgroup');
+          const catLabel = { citizen:'Горожане', outcast:'Изгои', minion:'Приспешники', demon:'Демоны' }[cat] || cat;
+          grp.label = catLabel;
+          roles.forEach(r => {
+            const opt = document.createElement('option');
+            opt.value = JSON.stringify({name:r.name, category:r.category||'citizen'});
+            opt.textContent = r.name;
+            if(r.name === item.name) opt.selected = true;
+            grp.appendChild(opt);
+          });
+          sel.appendChild(grp);
+        });
+        sel.addEventListener('change', () => {
+          arr[idx] = JSON.parse(sel.value);
+          setter([...arr]);
+          renderNightPanels();
+        });
+        row.appendChild(sel);
+
+        const del = document.createElement('button');
+        del.textContent = '✕';
+        del.addEventListener('click', () => {
+          arr.splice(idx, 1);
+          setter([...arr]);
+          renderNightEditors();
+          renderNightPanels();
+        });
+        row.appendChild(del);
+
+        // drag-to-reorder
+        row.addEventListener('dragstart', e => {
+          e.dataTransfer.setData('text/plain', idx);
+          row.style.opacity = '0.4';
+        });
+        row.addEventListener('dragend', () => { row.style.opacity = ''; editor.querySelectorAll('.night-order-row').forEach(r=>r.classList.remove('drag-over-top','drag-over-bot')); });
+        row.addEventListener('dragover', e => {
+          e.preventDefault();
+          editor.querySelectorAll('.night-order-row').forEach(r=>r.classList.remove('drag-over-top','drag-over-bot'));
+          const rect = row.getBoundingClientRect();
+          if(e.clientY < rect.top + rect.height/2) row.classList.add('drag-over-top');
+          else row.classList.add('drag-over-bot');
+        });
+        row.addEventListener('drop', e => {
+          e.preventDefault();
+          const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
+          if(fromIdx === idx) return;
+          const rect = row.getBoundingClientRect();
+          const before = e.clientY < rect.top + rect.height/2;
+          const [moved] = arr.splice(fromIdx, 1);
+          const insertAt = before ? (fromIdx < idx ? idx-1 : idx) : (fromIdx < idx ? idx : idx+1);
+          arr.splice(insertAt, 0, moved);
+          setter([...arr]);
+          renderNightEditors();
+          renderNightPanels();
+        });
+
+        editor.appendChild(row);
+      });
+    });
+  }
+
   function renderCircle(){
     // убираем все висячие dropdown-ы
     document.querySelectorAll('.role-dropdown').forEach(d => d.remove());
@@ -676,11 +1017,21 @@
     const BOT_PAD   = 100; // панель кнопок ~70px + отступ
     const stageW    = stageEl.clientWidth;
     const stageH    = stageEl.clientHeight;
-    const SW        = Math.max(100, stageW  - 2 * SIDE_PAD + rectWOffset);
-    const SH        = Math.max(100, stageH  - TOP_PAD - BOT_PAD + rectHOffset);
+    const RECT_PAD_X = stageW * 0.05; // 5% от ширины экрана
+    const RECT_PAD_Y = stageH * 0.05; // 5% от высоты экрана
 
-    // смещение центра доступной зоны относительно центра stage
-    const rectOffsetY = (TOP_PAD - BOT_PAD) / 2 + rectYOffset; // отрицательное → сдвиг вверх
+    // левый край прямоугольника — правее карточки (если она видна)
+    // используем фиксированные размеры карточки чтобы избежать проблем с offsetWidth до рендера
+    const rectLeft  = nightCardLeftPad > 0
+      ? nightCardLeftPad          // NIGHT_CARD_LEFT + NIGHT_CARD_WIDTH + NIGHT_CARD_GAP
+      : (SIDE_PAD + RECT_PAD_X); // стандартный отступ слева
+    const rectRight = stageW - SIDE_PAD - RECT_PAD_X;
+    const SW        = Math.max(100, rectRight - rectLeft + rectWOffset);
+    const SH        = Math.max(100, stageH  - TOP_PAD - BOT_PAD - 2 * RECT_PAD_Y + rectHOffset);
+
+    // центр прямоугольника по X относительно центра stage
+    const rectOffsetY = (TOP_PAD - BOT_PAD) / 2 + rectYOffset;
+    const rectOffsetX = (rectLeft + rectRight) / 2 - stageW / 2 + rectXOffset;
 
     // минимальный радиус и запрошенный пользователем
     const rMin = minRadius(n, scale.iw);
@@ -691,11 +1042,13 @@
     const useRect = (circleReach * zoom > SW / 2) || (circleReach * zoom > SH / 2);
 
     // CSS-переменные масштаба
-    circleRing.style.setProperty('--av', scale.av+'px');
-    circleRing.style.setProperty('--iw', scale.iw+'px');
-    circleRing.style.setProperty('--fs', scale.fs+'px');
-    circleRing.style.setProperty('--bd', scale.bd+'px');
-    circleRing.style.setProperty('--gap', scale.gap+'px');
+    // в прямоугольном режиме zoom применяется к размерам элементов (позиции не трогаем)
+    const sizeZoom = useRect ? zoom : 1;
+    circleRing.style.setProperty('--av', (scale.av * sizeZoom)+'px');
+    circleRing.style.setProperty('--iw', (scale.iw * sizeZoom)+'px');
+    circleRing.style.setProperty('--fs', (scale.fs * sizeZoom)+'px');
+    circleRing.style.setProperty('--bd', (scale.bd * sizeZoom)+'px');
+    circleRing.style.setProperty('--gap', (scale.gap * sizeZoom)+'px');
     circleRing.classList.remove('compact');
     circleRing.classList.toggle('rect-layout', useRect);
 
@@ -718,11 +1071,11 @@
     if(centerDot) centerDot.style.display = useRect ? 'none' : '';
 
     if(useRect){
-      _renderRect(n, scale, source, SW, SH, rectOffsetY);
+      _renderRect(n, scale, source, SW, SH, rectOffsetY, rectOffsetX);
       // позиционируем зелёный контур поверх circleRing
       const rb = document.getElementById('rectBorder');
       const stageRect = stageEl.getBoundingClientRect();
-      const ringLeft  = stageW / 2 - SW / 2;
+      const ringLeft  = stageW / 2 + rectOffsetX - SW / 2;
       const ringTop   = stageH / 2 + rectOffsetY - SH / 2;
       rb.style.left   = ringLeft + 'px';
       rb.style.top    = ringTop  + 'px';
@@ -745,11 +1098,11 @@
       ind._t = setTimeout(() => ind.classList.remove('visible'), 2200);
     }
 
-    // кнопки поворота — только в круговом режиме
-    rotLeftBtn.disabled  = useRect;
-    rotRightBtn.disabled = useRect;
-    rotLeftBtn.style.opacity  = useRect ? '.3' : '';
-    rotRightBtn.style.opacity = useRect ? '.3' : '';
+    // кнопки поворота работают в обоих режимах
+    rotLeftBtn.disabled  = false;
+    rotRightBtn.disabled = false;
+    rotLeftBtn.style.opacity  = '';
+    rotRightBtn.style.opacity = '';
   }
 
   // ── КРУГОВОЙ РЕЖИМ ──
@@ -772,10 +1125,10 @@
   }
 
   // ── ПРЯМОУГОЛЬНЫЙ РЕЖИМ ──
-  function _renderRect(n, scale, source, SW, SH, offsetY){
+  function _renderRect(n, scale, source, SW, SH, offsetY, offsetX){
     circleRing.style.width   = SW+'px';
     circleRing.style.height  = SH+'px';
-    circleRing.style.marginLeft = (-SW/2)+'px';
+    circleRing.style.marginLeft = (offsetX - SW/2)+'px';
     circleRing.style.marginTop  = (offsetY - SH/2)+'px';
     circleRing.style.transform  = 'none';
 
@@ -792,6 +1145,7 @@
     const perimH = SH - 2 * INNER;
     const totalPerim = 2 * (perimW + perimH);
 
+    // Сначала генерируем все позиции по периметру
     for(let i = 0; i < n; i++){
       const dist = (totalPerim / n) * i + (totalPerim / n) * 0.5;
       let d = dist % totalPerim;
@@ -808,14 +1162,15 @@
       positions.push({ x, y });
     }
 
-    positions.forEach((pos, i) => {
-      const wrap = _makeItem(source, i, n);
+    positions.forEach((pos, posIdx) => {
+      // currentSlot сдвигает какой игрок стоит на какой позиции
+      const si = (posIdx + currentSlot) % n;
+      const wrap = _makeItem(source, si, n);
       wrap.style.top  = pos.y + 'px';
       wrap.style.left = pos.x + 'px';
       const inner = wrap.querySelector('.item-inner');
-      // Центр элемента теперь всегда внутри прямоугольника — простой центрирующий transform
       inner.style.transform = 'translate(-50%,-50%)';
-      initRectDrag(wrap, i);
+      initRectDrag(wrap, si);
       circleRing.appendChild(wrap);
     });
   }
@@ -954,13 +1309,41 @@
     }
 
     function openDropdown(){
-      // позиционируем dropdown относительно кнопки
-      const rect = pickerBtn.getBoundingClientRect();
-      dropdown.style.top  = (rect.bottom + 4) + 'px';
-      dropdown.style.left = rect.left + 'px';
       pickerStep = 'cat';
       buildDropdown();
       dropdown.classList.add('open');
+
+      // умное позиционирование — не выходим за края экрана
+      const rect    = pickerBtn.getBoundingClientRect();
+      const ddW     = dropdown.offsetWidth  || 180;
+      const ddH     = dropdown.offsetHeight || 200;
+      const vw      = window.innerWidth;
+      const vh      = window.innerHeight;
+      const MARGIN  = 6;
+
+      // по горизонтали: сначала пробуем слева от кнопки, потом справа, потом прижимаем к правому краю
+      let left = rect.left;
+      if(left + ddW + MARGIN > vw) left = vw - ddW - MARGIN;
+      if(left < MARGIN)            left = MARGIN;
+
+      // по вертикали: пробуем снизу, если не влезает — открываем вверх
+      let top;
+      const spaceBelow = vh - rect.bottom - MARGIN;
+      const spaceAbove = rect.top - MARGIN;
+      if(spaceBelow >= ddH || spaceBelow >= spaceAbove){
+        top = rect.bottom + 4;
+      } else {
+        top = rect.top - ddH - 4;
+      }
+      if(top < MARGIN) top = MARGIN;
+
+      dropdown.style.top  = top  + 'px';
+      dropdown.style.left = left + 'px';
+
+      // ограничиваем высоту доступным пространством
+      const maxH = Math.min(vh * 0.6, vh - top - MARGIN);
+      dropdown.style.maxHeight = Math.max(120, maxH) + 'px';
+
       // закрыть при клике вне
       setTimeout(() => {
         document.addEventListener('click', onOutsideClick, { once:true, capture:true });
@@ -1074,10 +1457,10 @@
   }
 
   function initRectDrag(wrap, si){
-    wrap.style.cursor = 'grab';
 
     wrap.addEventListener('pointerdown', e => {
       if(e.target.closest('select, button')) return;
+      if(isGridMode) return;
       dragSlot = si;
       wrap.style.cursor = 'grabbing';
 
@@ -1175,7 +1558,13 @@
   const ZOOM_MAX  = 2.5;
 
   function applyZoom(){
-    circleWrap.style.transform = `scale(${zoom})`;
+    // в прямоугольном режиме zoom меняет только размеры элементов, но не их позиции
+    // в круговом режиме — стандартный scale всего враппера
+    if(isGridMode){
+      circleWrap.style.transform = '';
+    } else {
+      circleWrap.style.transform = `scale(${zoom})`;
+    }
     renderCircle();
   }
   zoomInBtn.addEventListener('click',  () => { zoom = Math.min(ZOOM_MAX, parseFloat((zoom+ZOOM_STEP).toFixed(2))); applyZoom(); });
@@ -1188,6 +1577,8 @@
   document.getElementById('rectHMinus').addEventListener('click', () => { rectHOffset -= RECT_STEP; renderCircle(); });
   document.getElementById('rectYPlus') .addEventListener('click', () => { rectYOffset += RECT_STEP; renderCircle(); });
   document.getElementById('rectYMinus').addEventListener('click', () => { rectYOffset -= RECT_STEP; renderCircle(); });
+  document.getElementById('rectXPlus') .addEventListener('click', () => { rectXOffset += RECT_STEP; renderCircle(); });
+  document.getElementById('rectXMinus').addEventListener('click', () => { rectXOffset -= RECT_STEP; renderCircle(); });
 
   // зум колесом мыши над сценой
   document.getElementById('stage').addEventListener('wheel', e => {
@@ -1202,10 +1593,18 @@
   window.addEventListener('resize', () => { renderCircle(); });
 
   rotLeftBtn.addEventListener('click',()=>{
-    currentSlot=(currentSlot-1+count)%count; snapToCurrentSlot();
+    if(isGridMode){
+      currentSlot=(currentSlot-1+count)%count; renderCircle();
+    } else {
+      currentSlot=(currentSlot-1+count)%count; snapToCurrentSlot();
+    }
   });
   rotRightBtn.addEventListener('click',()=>{
-    currentSlot=(currentSlot+1)%count; snapToCurrentSlot();
+    if(isGridMode){
+      currentSlot=(currentSlot+1)%count; renderCircle();
+    } else {
+      currentSlot=(currentSlot+1)%count; snapToCurrentSlot();
+    }
   });
 
   applyCountBtn.addEventListener('click',()=>{
@@ -1246,6 +1645,17 @@
     fileInput.value='';
   });
 
+  document.getElementById('addNight1Btn').addEventListener('click', () => {
+    const first = pool[0];
+    nightOrder1.push(first ? {name:first.name, category:first.category||'citizen'} : {name:'—', category:'citizen'});
+    renderNightEditors(); renderNightPanels();
+  });
+  document.getElementById('addNightNBtn').addEventListener('click', () => {
+    const first = pool[0];
+    nightOrderN.push(first ? {name:first.name, category:first.category||'citizen'} : {name:'—', category:'citizen'});
+    renderNightEditors(); renderNightPanels();
+  });
+
   addTagBtn.addEventListener('click',()=>{
     tagPool.push({name:'Новый тэг'});
     renderTagsList(); renderCircle();
@@ -1258,6 +1668,7 @@
       // Старый формат: [...] (массив ролей)
       const rolesArr = Array.isArray(parsed) ? parsed : (parsed.roles || []);
       const tagsArr  = Array.isArray(parsed) ? null   : (parsed.tags  || null);
+      const orderArr = Array.isArray(parsed) ? null   : (parsed.order || null);
       if(!Array.isArray(rolesArr)) throw new Error('roles должен быть массивом');
       pool = rolesArr.map(it=>({
         name:     it.name||it.role||'—',
@@ -1268,13 +1679,25 @@
         tagPool = tagsArr.map(t => ({ name: typeof t==='string' ? t : (t.name||'—') }));
         renderTagsList();
       }
+      if(orderArr && Array.isArray(orderArr)){
+        roleOrder = orderArr.map(o => typeof o==='string' ? {name:o} : {name:o.name||'—', category:o.category||null});
+      } else { roleOrder = []; }
+      const n1Arr = Array.isArray(parsed) ? null : (parsed.nightOrder1 || null);
+      const nNArr = Array.isArray(parsed) ? null : (parsed.nightOrderN || null);
+      nightOrder1 = n1Arr && Array.isArray(n1Arr) ? n1Arr.map(o=>typeof o==='string'?{name:o,category:'citizen'}:{name:o.name||'—',category:o.category||'citizen'}) : [];
+      nightOrderN = nNArr && Array.isArray(nNArr) ? nNArr.map(o=>typeof o==='string'?{name:o,category:'citizen'}:{name:o.name||'—',category:o.category||'citizen'}) : [];
+      renderOrderPanel();
+      renderNightEditors(); renderNightPanels();
       renderItemsList(); renderCircle();
     }catch(err){ alert('Ошибка JSON: '+err.message); }
   });
   exportJsonBtn.addEventListener('click',()=>{
     const data = {
-      roles: pool.map(it=>({ name:it.name, category:it.category||'citizen', img:it.img })),
-      tags:  tagPool.map(t=>({ name:t.name })),
+      roles:       pool.map(it=>({ name:it.name, category:it.category||'citizen', img:it.img })),
+      tags:        tagPool.map(t=>({ name:t.name })),
+      order:       roleOrder.map(o=>({ name:o.name, category:o.category||'citizen' })),
+      nightOrder1: nightOrder1.map(o=>({ name:o.name, category:o.category||'citizen' })),
+      nightOrderN: nightOrderN.map(o=>({ name:o.name, category:o.category||'citizen' })),
     };
     jsonArea.value = JSON.stringify(data, null, 2);
   });
@@ -1293,7 +1716,10 @@
     tagPool=[{name:"Отравлен"},{name:"Пьяница"},{name:"Проклят"},{name:"Подозреваемый"}];
     count=6; radius=260; rotation=90; currentSlot=0;
     assignments=[]; alive=[]; slotTags=[];
-    rectWOffset=0; rectHOffset=0; rectYOffset=0;
+    rectWOffset=0; rectHOffset=0; rectYOffset=0; rectXOffset=0;
+    roleOrder=[]; nightOrder1=[]; nightOrderN=[];
+    renderOrderPanel();
+    renderNightEditors(); renderNightPanels();
     countInput.value=6; radiusInput.value=260;
     renderItemsList(); renderTagsList(); renderCircle();
   });
@@ -1306,7 +1732,7 @@
       name: 'Классическая мафия',
       file: 'presets/classic.json',
       // Встроенные данные — используются когда fetch недоступен (file://)
-      data: {"roles":[{"name":"Шериф","category":"citizen"},{"name":"Доктор","category":"citizen"},{"name":"Детектив","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Мафия","category":"minion"},{"name":"Мафия","category":"minion"},{"name":"Дон","category":"demon"},{"name":"Маньяк","category":"outcast"}],"tags":[{"name":"Подозреваемый"},{"name":"Проверен"},{"name":"Алиби"},{"name":"Под прицелом"}]}
+      data: {"roles":[{"name":"Шериф","category":"citizen"},{"name":"Доктор","category":"citizen"},{"name":"Детектив","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Мафия","category":"minion"},{"name":"Мафия","category":"minion"},{"name":"Дон","category":"demon"},{"name":"Маньяк","category":"outcast"}],"tags":[{"name":"Подозреваемый"},{"name":"Проверен"},{"name":"Алиби"},{"name":"Под прицелом"}],"order":[{"name":"Мафия","category":"minion"},{"name":"Мафия","category":"minion"},{"name":"Дон","category":"demon"},{"name":"Маньяк","category":"outcast"},{"name":"Шериф","category":"citizen"},{"name":"Доктор","category":"citizen"},{"name":"Детектив","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Горожанин","category":"citizen"}]}
     },
     {
       name: 'Тёмное средневековье',
@@ -1365,6 +1791,7 @@
   function applyPresetData(parsed, label){
     const rolesArr = Array.isArray(parsed) ? parsed : (parsed.roles || []);
     const tagsArr  = Array.isArray(parsed) ? null   : (parsed.tags  || null);
+    const orderArr = Array.isArray(parsed) ? null   : (parsed.order || null);
     if(!Array.isArray(rolesArr)) throw new Error('roles должен быть массивом');
     pool = rolesArr.map(it=>({
       name:     it.name||it.role||'—',
@@ -1375,6 +1802,12 @@
       tagPool = tagsArr.map(t => ({ name: typeof t==='string' ? t : (t.name||'—') }));
       renderTagsList();
     }
+    if(orderArr && Array.isArray(orderArr)){
+      roleOrder = orderArr.map(o => typeof o==='string' ? {name:o} : {name:o.name||'—', category:o.category||null});
+    } else {
+      roleOrder = [];
+    }
+    renderOrderPanel();
     renderItemsList(); renderCircle();
     setPresetStatus(`✓ Загружен: ${label}`);
   }
@@ -1403,7 +1836,7 @@
 
   // init
   countInput.value=count; radiusInput.value=radius;
-  renderItemsList(); renderTagsList(); renderCircle();
+  renderItemsList(); renderTagsList(); renderNightEditors(); renderNightPanels(); renderCircle();
 
 })();
 </script>
