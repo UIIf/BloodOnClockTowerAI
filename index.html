@@ -9,6 +9,10 @@
     --bg: #0f1117; --panel: #181b25; --panel-border: #2a2e3d;
     --accent: #6c8cff; --accent2: #ff6c9c; --accent3: #ffb347;
     --text: #e7e9f0; --muted: #8b8fa3;
+    --cat-citizen: #5b9cf6;
+    --cat-outcast:  #7ec8f7;
+    --cat-minion:  #ff6b6b;
+    --cat-demon:   #e03030;
   }
   *{ box-sizing: border-box; }
   html,body{
@@ -103,6 +107,7 @@
   #stage{
     width:100%; height:100%; position:relative;
     display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
   }
   #circleWrap{ position:relative; width:1px; height:1px; }
   #circleRing{
@@ -229,8 +234,173 @@
   }
   #rotateControls button{ padding:8px 14px; font-size:16px; }
 
-  ::-webkit-scrollbar{ width:8px; }
+  /* ── grid-режим: прямоугольник когда элементы выходят за экран ── */
+  #circleWrap.grid-mode{
+    width: auto; height: auto;
+    max-width: calc(100vw - 40px);
+  }
+  #circleWrap.grid-mode .ring-guide,
+  #circleWrap.grid-mode .center-dot{ display:none; }
+
+  #circleRing.grid-mode{
+    position:static !important;
+    width:auto !important; height:auto !important;
+    margin:0 !important;
+    transform:none !important;
+    display:flex; flex-wrap:wrap;
+    justify-content:center; align-items:flex-start;
+    gap:14px; padding:12px;
+  }
+  #circleRing.grid-mode .circle-item{
+    position:static !important;
+    width:auto; height:auto;
+    transform:none !important;
+  }
+  #circleRing.grid-mode .circle-item .item-inner{
+    position:static !important;
+    transform:none !important;
+    width:var(--iw);
+  }
+  /* индикатор режима */
+  #layoutIndicator{
+    position:fixed; top:16px; right:16px;
+    background:rgba(24,27,37,.85); border:1px solid var(--panel-border);
+    border-radius:8px; padding:5px 10px;
+    font-size:11px; color:var(--muted);
+    backdrop-filter:blur(6px);
+    pointer-events:none;
+    opacity:0; transition:opacity .3s;
+  }
+  #layoutIndicator.visible{ opacity:1; }
+
+  /* кнопки поворота скрыты в rect-режиме, кнопки прямоугольника — в круговом */
+  body.grid-mode #rotateControls .rotate-only{ opacity:.3; pointer-events:none; }
+  .rect-only{ display:none !important; }
+  body.grid-mode .rect-only{ display:block !important; }
+  body.grid-mode .rect-only.row{ display:flex !important; }
+
+  /* в прямоугольном режиме .circle-item позиционируется через left/top, а не через transform */
+  #circleRing.rect-layout .circle-item{
+    top: 0; left: 0; /* переопределяем 50%/50%; реальные координаты ставятся через inline-style */
+  }
+  /* направляющий контур: круг в ring-режиме, прямоугольник в rect-режиме */
+  #circleRing.rect-layout ~ .ring-guide,
+  .ring-guide.rect{
+    border-radius: 12px;
+  }
+  /* точка в центре скрывается в rect-режиме */
+  #circleRing.rect-layout ~ .center-dot,
+  .center-dot.rect{ display:none; }
+  body.locked .role-select{
+    pointer-events:none;
+    border-color:transparent;
+    background:transparent;
+    appearance:none; -webkit-appearance:none;
+    opacity:.85;
+    cursor:default;
+  }
+  body.locked .add-tag-select{ display:none !important; }
+  body.locked .remove-tag{ display:none !important; }
+  body.locked .kill-btn{ pointer-events:none; opacity:.5; }
+  body.locked #burgerBtn{ pointer-events:none; opacity:.4; }
+  /* кнопка лока подсвечивается когда активна */
+  #lockBtn.active{
+    background: var(--accent2);
+    color: #1a0a10;
+  }
+
+  #rectBorder{
+    position:absolute; pointer-events:none; z-index:50;
+    border: 2px solid #00e676; border-radius: 10px;
+    box-shadow: 0 0 12px rgba(0,230,118,.35);
+    opacity:0; transition: opacity .2s;
+    display:none;
+  }
+  body.grid-mode.menu-open #rectBorder{ display:block; opacity:1; }
   ::-webkit-scrollbar-thumb{ background:#2a2e3d; border-radius:4px; }
+
+  /* ── drag-and-drop в rect-режиме ── */
+  .circle-item.drag-over .avatar-box img{
+    border-color: var(--accent) !important;
+    box-shadow: 0 0 0 3px rgba(108,140,255,.5), 0 4px 14px rgba(0,0,0,.5);
+    transform: scale(1.1);
+  }
+
+  /* ── цвета категорий роли ── */
+  .role-select.cat-citizen { color: var(--cat-citizen); border-color: rgba(91,156,246,.4); }
+  .role-select.cat-outcast  { color: var(--cat-outcast);  border-color: rgba(126,200,247,.4); }
+  .role-select.cat-minion  { color: var(--cat-minion);  border-color: rgba(255,107,107,.4); }
+  .role-select.cat-demon   { color: var(--cat-demon);   border-color: rgba(224,48,48,.5); }
+  /* dot-индикатор категории в списке ролей */
+  .cat-dot{
+    display:inline-block; width:10px; height:10px; border-radius:50%;
+    flex-shrink:0; margin-right:2px;
+  }
+  .cat-dot.cat-citizen { background: var(--cat-citizen); }
+  .cat-dot.cat-outcast  { background: var(--cat-outcast); }
+  .cat-dot.cat-minion  { background: var(--cat-minion); }
+  .cat-dot.cat-demon   { background: var(--cat-demon); }
+  select.cat-select{
+    flex-shrink:0; width:110px; font-size:11px;
+    background:#0e1018; border:1px solid var(--panel-border);
+    color:var(--text); border-radius:6px; padding:4px 5px;
+  }
+
+  /* ── двухшаговый выбор роли ── */
+  .role-picker{
+    position:relative;
+    width: var(--iw);
+  }
+  .role-picker-btn{
+    width:100%; font-size: var(--fs);
+    text-align:center; color:var(--text);
+    background:rgba(10,11,17,.9);
+    border:1px solid var(--panel-border);
+    padding:2px 4px; border-radius:10px; cursor:pointer;
+    font-weight:600; text-shadow:0 1px 3px rgba(0,0,0,.8);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  .role-picker-btn.cat-citizen{ color:var(--cat-citizen); border-color:rgba(91,156,246,.4); }
+  .role-picker-btn.cat-outcast { color:var(--cat-outcast);  border-color:rgba(126,200,247,.4); }
+  .role-picker-btn.cat-minion { color:var(--cat-minion);  border-color:rgba(255,107,107,.4); }
+  .role-picker-btn.cat-demon  { color:var(--cat-demon);   border-color:rgba(224,48,48,.5); }
+
+  .role-dropdown{
+    position:fixed; z-index:9999;
+    background:#1a1d2a; border:1px solid var(--panel-border);
+    border-radius:10px; min-width:160px;
+    box-shadow:0 8px 32px rgba(0,0,0,.7);
+    overflow:hidden;
+    display:none;
+  }
+  .role-dropdown.open{ display:block; }
+
+  .role-dropdown-step{ padding:6px 0; }
+
+  .role-dropdown-header{
+    font-size:10px; color:var(--muted); text-transform:uppercase;
+    letter-spacing:.5px; padding:4px 10px 2px;
+    display:flex; align-items:center; gap:6px; cursor:pointer;
+  }
+  .role-dropdown-header .back-arrow{ font-size:12px; }
+  .role-dropdown-header:hover .back-arrow{ color:var(--accent); }
+
+  .role-dropdown-cat-item, .role-dropdown-role-item{
+    padding:5px 12px; cursor:pointer;
+    font-size:12px; font-weight:600;
+    display:flex; align-items:center; gap:7px;
+    transition:background .12s;
+  }
+  .role-dropdown-cat-item:hover, .role-dropdown-role-item:hover{
+    background:rgba(255,255,255,.07);
+  }
+  .role-dropdown-cat-item .cat-dot{ flex-shrink:0; }
+  .role-dropdown-role-item.selected{ opacity:.5; }
+
+  body.locked .role-picker-btn{
+    pointer-events:none; border-color:transparent;
+    background:transparent; opacity:.85; cursor:default;
+  }
 </style>
 </head>
 <body>
@@ -246,6 +416,17 @@
 
   <aside id="sidebar">
     <h2>⚙ Настройки круга</h2>
+
+    <div class="section">
+      <label>Пресеты ролей</label>
+      <div class="row">
+        <select id="presetSelect" style="flex:1;">
+          <option value="">— выбери пресет —</option>
+        </select>
+        <button id="presetLoadBtn" class="secondary">Загрузить</button>
+      </div>
+      <div id="presetStatus" class="hint"></div>
+    </div>
 
     <div class="section">
       <label>Количество игроков</label>
@@ -293,6 +474,25 @@
       </div>
     </div>
 
+    <div class="section rect-only">
+      <label>Размер прямоугольника</label>
+      <div class="row" style="justify-content:space-between;">
+        <span style="font-size:12px;color:var(--muted);min-width:60px;">Ширина</span>
+        <button id="rectWMinus" class="secondary">◀ Меньше</button>
+        <button id="rectWPlus"  class="secondary">Больше ▶</button>
+      </div>
+      <div class="row" style="justify-content:space-between;">
+        <span style="font-size:12px;color:var(--muted);min-width:60px;">Высота</span>
+        <button id="rectHMinus" class="secondary">▲ Меньше</button>
+        <button id="rectHPlus"  class="secondary">Больше ▼</button>
+      </div>
+      <div class="row" style="justify-content:space-between;">
+        <span style="font-size:12px;color:var(--muted);min-width:60px;">Позиция</span>
+        <button id="rectYMinus" class="secondary">▲ Выше</button>
+        <button id="rectYPlus"  class="secondary">Ниже ▼</button>
+      </div>
+    </div>
+
     <div class="section" style="border-bottom:none;">
       <button id="resetBtn" class="danger full">Сбросить к примеру</button>
     </div>
@@ -308,9 +508,13 @@
       <button id="zoomOut" title="Уменьшить">−</button>
       <button id="zoomIn"  title="Увеличить">+</button>
       <div style="width:1px;height:24px;background:var(--panel-border);margin:0 2px;"></div>
-      <button id="rotLeft" title="Против часовой">⟲</button>
-      <button id="rotRight" title="По часовой">⟳</button>
+      <button id="rotLeft"  class="rotate-only" title="Против часовой">⟲</button>
+      <button id="rotRight" class="rotate-only" title="По часовой">⟳</button>
+      <div style="width:1px;height:24px;background:var(--panel-border);margin:0 2px;"></div>
+      <button id="lockBtn" title="Режим просмотра">🔓 Редактирование</button>
     </div>
+    <div id="layoutIndicator">⬛ Прямоугольник</div>
+    <div id="rectBorder"></div>
   </main>
 
 </div>
@@ -341,27 +545,30 @@
 
   // ── состояние ──
   let pool = [
-    { name:"Шериф",     img:placeholderImg("Ш") },
-    { name:"Доктор",    img:placeholderImg("Д") },
-    { name:"Маг",       img:placeholderImg("М") },
-    { name:"Воин",      img:placeholderImg("В") },
-    { name:"Разведчик", img:placeholderImg("Р") },
-    { name:"Торговец",  img:placeholderImg("Т") },
-    { name:"Кузнец",    img:placeholderImg("К") },
-    { name:"Жрец",      img:placeholderImg("Ж") },
+    // { name:"Шериф",     img:placeholderImg("Ш"), category:"citizen"  },
+    // { name:"Доктор",    img:placeholderImg("Д"), category:"citizen"  },
+    // { name:"Маг",       img:placeholderImg("М"), category:"citizen"  },
+    // { name:"Воин",      img:placeholderImg("В"), category:"citizen"  },
+    // { name:"Разведчик", img:placeholderImg("Р"), category:"outcast"  },
+    // { name:"Торговец",  img:placeholderImg("Т"), category:"outcast"  },
+    // { name:"Кузнец",    img:placeholderImg("К"), category:"minion"   },
+    // { name:"Жрец",      img:placeholderImg("Ж"), category:"demon"    },
   ];
   let tagPool = [
-    { name:"Отравлен" }, { name:"Пьяница" },
-    { name:"Проклят" },  { name:"Подозреваемый" },
+    // { name:"Отравлен" }, { name:"Пьяница" },
+    // { name:"Проклят" },  { name:"Подозреваемый" },
   ];
 
   let count       = 6;
-  let radius      = 260; // пользовательский
+  let radius      = 260;
   let rotation    = 90;
   let currentSlot = 0;
   let assignments = [];
   let alive       = [];
   let slotTags    = [];
+  let rectWOffset = 0;
+  let rectHOffset = 0;
+  let rectYOffset = 0; // смещение по вертикали (px, положительное = вниз)
 
   const itemsListEl   = document.getElementById('itemsList');
   const tagsListEl    = document.getElementById('tagsList');
@@ -379,16 +586,45 @@
   const rotLeftBtn    = document.getElementById('rotLeft');
   const rotRightBtn   = document.getElementById('rotRight');
 
+  const CATEGORIES = [
+    { value:'citizen', label:'Горожанин' },
+    { value:'outcast',  label:'Изгой'     },
+    { value:'minion',  label:'Приспешник' },
+    { value:'demon',   label:'Демон'      },
+  ];
+
   function renderItemsList(){
     itemsListEl.innerHTML = '';
     pool.forEach((item, idx) => {
       const row = document.createElement('div');
       row.className = 'item-row';
+      row.style.flexWrap = 'wrap';
       const img = document.createElement('img'); img.src = item.img;
       row.appendChild(img);
       const ni = document.createElement('input'); ni.type='text'; ni.value=item.name;
       ni.addEventListener('input', () => { pool[idx].name=ni.value; renderCircle(); });
       row.appendChild(ni);
+
+      // категория
+      const catDot = document.createElement('span');
+      catDot.className = 'cat-dot cat-'+(item.category||'citizen');
+      row.appendChild(catDot);
+
+      const catSel = document.createElement('select');
+      catSel.className = 'cat-select';
+      CATEGORIES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.value; opt.textContent = c.label;
+        if(c.value === (item.category||'citizen')) opt.selected = true;
+        catSel.appendChild(opt);
+      });
+      catSel.addEventListener('change', () => {
+        pool[idx].category = catSel.value;
+        catDot.className = 'cat-dot cat-'+catSel.value;
+        renderCircle();
+      });
+      row.appendChild(catSel);
+
       const del = document.createElement('button'); del.textContent='✕';
       del.addEventListener('click', () => { pool.splice(idx,1); renderItemsList(); renderCircle(); });
       row.appendChild(del);
@@ -424,170 +660,499 @@
   }
 
   function renderCircle(){
+    // убираем все висячие dropdown-ы
+    document.querySelectorAll('.role-dropdown').forEach(d => d.remove());
     circleRing.innerHTML = '';
 
     const n = Math.max(1, count);
     const scale = scaleForCount(n);
+    const source = pool.length ? pool : [{name:'—', img:placeholderImg('?')}];
+    syncState(n, source);
 
-    // эффективный радиус: не меньше минимального для данного масштаба
+    // размеры доступной области (с учётом панели кнопок снизу)
+    const stageEl   = document.getElementById('stage');
+    const SIDE_PAD  = 16;
+    const TOP_PAD   = 16;
+    const BOT_PAD   = 100; // панель кнопок ~70px + отступ
+    const stageW    = stageEl.clientWidth;
+    const stageH    = stageEl.clientHeight;
+    const SW        = Math.max(100, stageW  - 2 * SIDE_PAD + rectWOffset);
+    const SH        = Math.max(100, stageH  - TOP_PAD - BOT_PAD + rectHOffset);
+
+    // смещение центра доступной зоны относительно центра stage
+    const rectOffsetY = (TOP_PAD - BOT_PAD) / 2 + rectYOffset; // отрицательное → сдвиг вверх
+
+    // минимальный радиус и запрошенный пользователем
     const rMin = minRadius(n, scale.iw);
-    const r = Math.max(radius, rMin);
+    const r    = Math.max(radius, rMin);
 
-    // применяем CSS-переменные масштаба
+    // поместится ли круг в доступной зоне?
+    const circleReach = r + scale.iw / 2 + 12;
+    const useRect = (circleReach * zoom > SW / 2) || (circleReach * zoom > SH / 2);
+
+    // CSS-переменные масштаба
     circleRing.style.setProperty('--av', scale.av+'px');
     circleRing.style.setProperty('--iw', scale.iw+'px');
     circleRing.style.setProperty('--fs', scale.fs+'px');
     circleRing.style.setProperty('--bd', scale.bd+'px');
     circleRing.style.setProperty('--gap', scale.gap+'px');
-    circleRing.classList.remove('compact'); // нет compact-режима
+    circleRing.classList.remove('compact');
+    circleRing.classList.toggle('rect-layout', useRect);
 
+    // обновляем форму направляющего контура и видимость центральной точки
+    const guide     = document.querySelector('.ring-guide');
+    const centerDot = document.querySelector('.center-dot');
+    if(guide){
+      if(useRect){
+        guide.style.display = 'none';
+      } else {
+        guide.style.display = '';
+        guide.style.borderRadius = '50%';
+        guide.style.width  = '';
+        guide.style.height = '';
+        guide.style.top    = '';
+        guide.style.left   = '';
+        guide.style.inset  = '0';
+      }
+    }
+    if(centerDot) centerDot.style.display = useRect ? 'none' : '';
+
+    if(useRect){
+      _renderRect(n, scale, source, SW, SH, rectOffsetY);
+      // позиционируем зелёный контур поверх circleRing
+      const rb = document.getElementById('rectBorder');
+      const stageRect = stageEl.getBoundingClientRect();
+      const ringLeft  = stageW / 2 - SW / 2;
+      const ringTop   = stageH / 2 + rectOffsetY - SH / 2;
+      rb.style.left   = ringLeft + 'px';
+      rb.style.top    = ringTop  + 'px';
+      rb.style.width  = SW + 'px';
+      rb.style.height = SH + 'px';
+    } else {
+      _renderRing(n, scale, source, r);
+      document.getElementById('rectBorder').style.opacity = '0';
+    }
+
+    // индикатор смены режима
+    const wasRect = isGridMode;
+    isGridMode = useRect;
+    document.body.classList.toggle('grid-mode', useRect);
+    if(wasRect !== useRect){
+      const ind = document.getElementById('layoutIndicator');
+      ind.textContent = useRect ? '⬛ Прямоугольник' : '⬤ Круг';
+      ind.classList.add('visible');
+      clearTimeout(ind._t);
+      ind._t = setTimeout(() => ind.classList.remove('visible'), 2200);
+    }
+
+    // кнопки поворота — только в круговом режиме
+    rotLeftBtn.disabled  = useRect;
+    rotRightBtn.disabled = useRect;
+    rotLeftBtn.style.opacity  = useRect ? '.3' : '';
+    rotRightBtn.style.opacity = useRect ? '.3' : '';
+  }
+
+  // ── КРУГОВОЙ РЕЖИМ ──
+  function _renderRing(n, scale, source, r){
     circleRing.style.width  = (r*2)+'px';
     circleRing.style.height = (r*2)+'px';
     circleRing.style.marginLeft = (-r)+'px';
     circleRing.style.marginTop  = (-r)+'px';
-
-    const source = pool.length ? pool : [{name:'—', img:placeholderImg('?')}];
-    syncState(n, source);
+    circleRing.style.transform  = `rotate(${rotation}deg)`;
 
     for(let i=0; i<n; i++){
       const si = i;
-      const data = source[assignments[si]];
       const angle = (360/n)*i;
-
-      const wrap = document.createElement('div');
-      wrap.className = 'circle-item'+(alive[si] ? '' : ' dead');
+      const wrap = _makeItem(source, si, n);
       wrap.style.transform = `rotate(${angle}deg) translate(${r}px) rotate(${-angle}deg)`;
-
-      const inner = document.createElement('div');
-      inner.className = 'item-inner';
+      const inner = wrap.querySelector('.item-inner');
       inner.style.transform = `translate(-50%,-50%) rotate(${-rotation}deg)`;
-
-      // ── аватар ──
-      const avatarBox = document.createElement('div');
-      avatarBox.className = 'avatar-box';
-
-      const img = document.createElement('img');
-      img.src=data.img; img.alt=data.name;
-      avatarBox.appendChild(img);
-
-      const badge = document.createElement('span');
-      badge.className='slot-number-badge';
-      badge.textContent=si+1;
-      avatarBox.appendChild(badge);
-
-      const killBtn = document.createElement('button');
-      killBtn.className='kill-btn';
-      killBtn.textContent=alive[si]?'☠':'✓';
-      killBtn.title=alive[si]?'Убить':'Оживить';
-      killBtn.addEventListener('mousedown',e=>e.stopPropagation());
-      killBtn.addEventListener('click',e=>{
-        e.stopPropagation();
-        alive[si]=!alive[si];
-        wrap.classList.toggle('dead',!alive[si]);
-        killBtn.textContent=alive[si]?'☠':'✓';
-        killBtn.title=alive[si]?'Убить':'Оживить';
-      });
-      avatarBox.appendChild(killBtn);
-
-      // ── роль ──
-      const roleSelect = document.createElement('select');
-      roleSelect.className='role-select';
-      source.forEach((role,ri)=>{
-        const opt=document.createElement('option');
-        opt.value=ri; opt.textContent=role.name;
-        if(ri===assignments[si]) opt.selected=true;
-        roleSelect.appendChild(opt);
-      });
-      roleSelect.addEventListener('mousedown',e=>e.stopPropagation());
-      roleSelect.addEventListener('click',e=>e.stopPropagation());
-      roleSelect.addEventListener('change',()=>{
-        assignments[si]=parseInt(roleSelect.value,10);
-        img.src=source[assignments[si]].img;
-        img.alt=source[assignments[si]].name;
-      });
-
-      // ── теги ──
-      const tagsArea = document.createElement('div');
-      tagsArea.className='tags-area';
-
-      const tagsPills = document.createElement('div');
-      tagsPills.className='tags-pills';
-
-      // счётчик тэгов убран — пилюли всегда видны
-
-      function rebuildPills(){
-        tagsPills.innerHTML='';
-        slotTags[si].forEach(ti=>{
-          if(ti>=tagPool.length) return;
-          const pill=document.createElement('span');
-          pill.className='tag-pill';
-          pill.textContent=tagPool[ti].name;
-          const rm=document.createElement('button');
-          rm.className='remove-tag'; rm.textContent='×';
-          rm.addEventListener('mousedown',e=>e.stopPropagation());
-          rm.addEventListener('click',e=>{
-            e.stopPropagation();
-            slotTags[si].delete(ti);
-            rebuildPills(); rebuildAddSelect();
-          });
-          pill.appendChild(rm);
-          tagsPills.appendChild(pill);
-        });
-      }
-
-      const addTagSelect = document.createElement('select');
-      addTagSelect.className='add-tag-select';
-
-      function rebuildAddSelect(){
-        addTagSelect.innerHTML='';
-        const available=tagPool.filter((_,ti)=>!slotTags[si].has(ti));
-        if(available.length===0){ addTagSelect.style.display='none'; return; }
-        addTagSelect.style.display='';
-        const ph=document.createElement('option');
-        ph.value=''; ph.textContent='+ тэг…'; ph.disabled=true; ph.selected=true;
-        addTagSelect.appendChild(ph);
-        tagPool.forEach((tag,ti)=>{
-          if(slotTags[si].has(ti)) return;
-          const opt=document.createElement('option'); opt.value=ti; opt.textContent=tag.name;
-          addTagSelect.appendChild(opt);
-        });
-      }
-
-      addTagSelect.addEventListener('mousedown',e=>e.stopPropagation());
-      addTagSelect.addEventListener('click',e=>e.stopPropagation());
-      addTagSelect.addEventListener('change',()=>{
-        const ti=parseInt(addTagSelect.value,10);
-        if(!isNaN(ti)){ slotTags[si].add(ti); }
-        rebuildPills(); rebuildAddSelect();
-      });
-
-      rebuildPills(); rebuildAddSelect();
-
-      tagsArea.appendChild(tagsPills);
-      tagsArea.appendChild(addTagSelect);
-
-      inner.appendChild(avatarBox);
-      inner.appendChild(roleSelect);
-      inner.appendChild(tagsArea);
-      wrap.appendChild(inner);
       circleRing.appendChild(wrap);
     }
-
-    snapToCurrentSlot(r);
   }
 
-  function applyRotation(r){
+  // ── ПРЯМОУГОЛЬНЫЙ РЕЖИМ ──
+  function _renderRect(n, scale, source, SW, SH, offsetY){
+    circleRing.style.width   = SW+'px';
+    circleRing.style.height  = SH+'px';
+    circleRing.style.marginLeft = (-SW/2)+'px';
+    circleRing.style.marginTop  = (offsetY - SH/2)+'px';
+    circleRing.style.transform  = 'none';
+
+    // ── распределение по сторонам равномерно по периметру ──
+    // Игроки расставляются через равные расстояния вдоль периметра,
+    // со сдвигом на полшага — никогда не попадают ровно в углы.
+    // Нет дублирования угловых позиций между соседними сторонами.
+
+    // INNER — отступ от края прямоугольника до центра элемента
+    const INNER = scale.iw / 2 + 20;
+    const positions = [];
+
+    const perimW = SW - 2 * INNER;
+    const perimH = SH - 2 * INNER;
+    const totalPerim = 2 * (perimW + perimH);
+
+    for(let i = 0; i < n; i++){
+      const dist = (totalPerim / n) * i + (totalPerim / n) * 0.5;
+      let d = dist % totalPerim;
+      let x, y;
+      if(d < perimW){
+        x = INNER + d; y = INNER;
+      } else if(d < perimW + perimH){
+        x = SW - INNER; y = INNER + (d - perimW);
+      } else if(d < 2 * perimW + perimH){
+        x = SW - INNER - (d - perimW - perimH); y = SH - INNER;
+      } else {
+        x = INNER; y = SH - INNER - (d - 2 * perimW - perimH);
+      }
+      positions.push({ x, y });
+    }
+
+    positions.forEach((pos, i) => {
+      const wrap = _makeItem(source, i, n);
+      wrap.style.top  = pos.y + 'px';
+      wrap.style.left = pos.x + 'px';
+      const inner = wrap.querySelector('.item-inner');
+      // Центр элемента теперь всегда внутри прямоугольника — простой центрирующий transform
+      inner.style.transform = 'translate(-50%,-50%)';
+      initRectDrag(wrap, i);
+      circleRing.appendChild(wrap);
+    });
+  }
+
+  // ── общий DOM элемента слота ──
+  function _makeItem(source, si, n){
+    const data = source[assignments[si]];
+
+    const wrap = document.createElement('div');
+    wrap.className = 'circle-item'+(alive[si] ? '' : ' dead');
+    wrap.dataset.slot = si;
+
+    const inner = document.createElement('div');
+    inner.className = 'item-inner';
+
+    // аватар
+    const avatarBox = document.createElement('div');
+    avatarBox.className = 'avatar-box';
+
+    const img = document.createElement('img');
+    img.src=data.img; img.alt=data.name;
+    avatarBox.appendChild(img);
+
+    const badge = document.createElement('span');
+    badge.className='slot-number-badge';
+    badge.textContent=si+1;
+    avatarBox.appendChild(badge);
+
+    const killBtn = document.createElement('button');
+    killBtn.type = 'button';
+    killBtn.className='kill-btn';
+    killBtn.textContent=alive[si]?'☠':'✓';
+    killBtn.title=alive[si]?'Убить':'Оживить';
+    killBtn.addEventListener('mousedown',e=>{ e.stopPropagation(); e.preventDefault(); });
+    killBtn.addEventListener('click',e=>{
+      e.stopPropagation();
+      e.preventDefault();
+      alive[si]=!alive[si];
+      wrap.classList.toggle('dead',!alive[si]);
+      killBtn.textContent=alive[si]?'☠':'✓';
+      killBtn.title=alive[si]?'Убить':'Оживить';
+    });
+    avatarBox.appendChild(killBtn);
+
+    // роль — двухшаговый пикер
+    const pickerWrap = document.createElement('div');
+    pickerWrap.className = 'role-picker';
+
+    const pickerBtn = document.createElement('button');
+    pickerBtn.type = 'button';
+    pickerBtn.className = 'role-picker-btn cat-'+(source[assignments[si]]?.category||'citizen');
+    pickerBtn.textContent = source[assignments[si]]?.name || '—';
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'role-dropdown';
+
+    let pickerStep = 'cat'; // 'cat' | 'role'
+    let pickerCat  = null;
+
+    function getCategories(){
+      const seen = new Set();
+      return CATEGORIES.filter(c => {
+        if(source.some(r=>(r.category||'citizen')===c.value)){ seen.add(c.value); return true; }
+        return false;
+      });
+    }
+
+    function buildDropdown(){
+      dropdown.innerHTML = '';
+      const step = document.createElement('div');
+      step.className = 'role-dropdown-step';
+
+      if(pickerStep === 'cat'){
+        const hdr = document.createElement('div');
+        hdr.className = 'role-dropdown-header';
+        hdr.textContent = 'Выберите категорию';
+        step.appendChild(hdr);
+        getCategories().forEach(c => {
+          const item = document.createElement('div');
+          item.className = 'role-dropdown-cat-item';
+          const dot = document.createElement('span');
+          dot.className = 'cat-dot cat-'+c.value;
+          item.appendChild(dot);
+          const lbl = document.createElement('span');
+          lbl.style.color = `var(--cat-${c.value})`;
+          lbl.textContent = c.label;
+          item.appendChild(lbl);
+          item.addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); });
+          item.addEventListener('click', e => {
+            e.stopPropagation();
+            pickerCat = c.value;
+            pickerStep = 'role';
+            buildDropdown();
+          });
+          step.appendChild(item);
+        });
+      } else {
+        const hdr = document.createElement('div');
+        hdr.className = 'role-dropdown-header';
+        const arrow = document.createElement('span');
+        arrow.className = 'back-arrow'; arrow.textContent = '‹ ';
+        const catInfo = CATEGORIES.find(c=>c.value===pickerCat);
+        hdr.appendChild(arrow);
+        const lbl = document.createElement('span');
+        lbl.style.color = `var(--cat-${pickerCat})`;
+        lbl.textContent = catInfo?.label || pickerCat;
+        hdr.appendChild(lbl);
+        hdr.addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); });
+        hdr.addEventListener('click', e => {
+          e.stopPropagation();
+          pickerStep = 'cat';
+          buildDropdown();
+        });
+        step.appendChild(hdr);
+
+        const rolesInCat = source.map((r,ri)=>({r,ri})).filter(({r})=>(r.category||'citizen')===pickerCat);
+        rolesInCat.forEach(({r,ri}) => {
+          const item = document.createElement('div');
+          item.className = 'role-dropdown-role-item'+(ri===assignments[si]?' selected':'');
+          item.textContent = r.name;
+          item.style.color = `var(--cat-${pickerCat})`;
+          item.addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); });
+          item.addEventListener('click', e => {
+            e.stopPropagation();
+            assignments[si] = ri;
+            img.src = source[ri].img;
+            img.alt = source[ri].name;
+            pickerBtn.textContent = source[ri].name;
+            pickerBtn.className = 'role-picker-btn cat-'+(source[ri].category||'citizen');
+            closeDropdown();
+          });
+          step.appendChild(item);
+        });
+      }
+      dropdown.appendChild(step);
+    }
+
+    function openDropdown(){
+      // позиционируем dropdown относительно кнопки
+      const rect = pickerBtn.getBoundingClientRect();
+      dropdown.style.top  = (rect.bottom + 4) + 'px';
+      dropdown.style.left = rect.left + 'px';
+      pickerStep = 'cat';
+      buildDropdown();
+      dropdown.classList.add('open');
+      // закрыть при клике вне
+      setTimeout(() => {
+        document.addEventListener('click', onOutsideClick, { once:true, capture:true });
+      }, 0);
+    }
+
+    function closeDropdown(){
+      dropdown.classList.remove('open');
+      document.removeEventListener('click', onOutsideClick, true);
+    }
+
+    function onOutsideClick(e){
+      if(!dropdown.contains(e.target) && e.target !== pickerBtn){
+        closeDropdown();
+      } else {
+        // если клик внутри — слушаем снова
+        setTimeout(() => {
+          document.addEventListener('click', onOutsideClick, { once:true, capture:true });
+        }, 0);
+      }
+    }
+
+    pickerBtn.addEventListener('mousedown', e => { e.stopPropagation(); e.preventDefault(); });
+    pickerBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      if(dropdown.classList.contains('open')) closeDropdown();
+      else openDropdown();
+    });
+
+    document.body.appendChild(dropdown);
+
+    pickerWrap.appendChild(pickerBtn);
+    // сохраняем ссылку для cleanup при перерисовке
+    pickerWrap._dropdown = dropdown;
+
+    // теги
+    const tagsArea = document.createElement('div');
+    tagsArea.className='tags-area';
+    const tagsPills = document.createElement('div');
+    tagsPills.className='tags-pills';
+
+    function rebuildPills(){
+      tagsPills.innerHTML='';
+      slotTags[si].forEach(ti=>{
+        if(ti>=tagPool.length) return;
+        const pill=document.createElement('span');
+        pill.className='tag-pill';
+        pill.textContent=tagPool[ti].name;
+        const rm=document.createElement('button');
+        rm.className='remove-tag'; rm.textContent='×';
+        rm.addEventListener('mousedown',e=>e.stopPropagation());
+        rm.addEventListener('click',e=>{
+          e.stopPropagation();
+          slotTags[si].delete(ti);
+          rebuildPills(); rebuildAddSelect();
+        });
+        pill.appendChild(rm);
+        tagsPills.appendChild(pill);
+      });
+    }
+
+    const addTagSelect = document.createElement('select');
+    addTagSelect.className='add-tag-select';
+
+    function rebuildAddSelect(){
+      addTagSelect.innerHTML='';
+      const available=tagPool.filter((_,ti)=>!slotTags[si].has(ti));
+      if(available.length===0){ addTagSelect.style.display='none'; return; }
+      addTagSelect.style.display='';
+      const ph=document.createElement('option');
+      ph.value=''; ph.textContent='+ тэг…'; ph.disabled=true; ph.selected=true;
+      addTagSelect.appendChild(ph);
+      tagPool.forEach((tag,ti)=>{
+        if(slotTags[si].has(ti)) return;
+        const opt=document.createElement('option'); opt.value=ti; opt.textContent=tag.name;
+        addTagSelect.appendChild(opt);
+      });
+    }
+
+    addTagSelect.addEventListener('mousedown',e=>e.stopPropagation());
+    addTagSelect.addEventListener('click',e=>e.stopPropagation());
+    addTagSelect.addEventListener('change',()=>{
+      const ti=parseInt(addTagSelect.value,10);
+      if(!isNaN(ti)){ slotTags[si].add(ti); }
+      rebuildPills(); rebuildAddSelect();
+    });
+
+    rebuildPills(); rebuildAddSelect();
+
+    tagsArea.appendChild(tagsPills);
+    tagsArea.appendChild(addTagSelect);
+
+    inner.appendChild(avatarBox);
+    inner.appendChild(pickerWrap);
+    inner.appendChild(tagsArea);
+    wrap.appendChild(inner);
+    return wrap;
+  }
+
+  let isGridMode = false;
+
+  // ── drag-and-drop swap в прямоугольном режиме ──
+  let dragSlot = -1;
+  let dragGhost = null;
+
+  function rectSwap(a, b){
+    [assignments[a], assignments[b]] = [assignments[b], assignments[a]];
+    [alive[a],       alive[b]      ] = [alive[b],       alive[a]      ];
+    [slotTags[a],    slotTags[b]   ] = [slotTags[b],    slotTags[a]   ];
+    renderCircle();
+  }
+
+  function initRectDrag(wrap, si){
+    wrap.style.cursor = 'grab';
+
+    wrap.addEventListener('pointerdown', e => {
+      if(e.target.closest('select, button')) return;
+      dragSlot = si;
+      wrap.style.cursor = 'grabbing';
+
+      // ghost — полупрозрачная копия
+      dragGhost = wrap.cloneNode(true);
+      dragGhost.style.position  = 'fixed';
+      dragGhost.style.pointerEvents = 'none';
+      dragGhost.style.opacity   = '0.7';
+      dragGhost.style.zIndex    = '999';
+      dragGhost.style.width     = wrap.offsetWidth  + 'px';
+      dragGhost.style.height    = wrap.offsetHeight + 'px';
+      dragGhost.style.transform = 'translate(-50%,-50%) scale(1.08)';
+      dragGhost.style.filter    = 'drop-shadow(0 4px 16px rgba(108,140,255,.6))';
+      dragGhost.style.left      = e.clientX + 'px';
+      dragGhost.style.top       = e.clientY + 'px';
+      document.body.appendChild(dragGhost);
+
+      wrap.style.opacity = '0.35';
+      e.currentTarget.setPointerCapture(e.pointerId);
+    });
+
+    wrap.addEventListener('pointermove', e => {
+      if(dragSlot === -1 || dragGhost === null) return;
+      dragGhost.style.left = e.clientX + 'px';
+      dragGhost.style.top  = e.clientY + 'px';
+
+      // подсветить цель
+      document.querySelectorAll('.circle-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const target = el?.closest('.circle-item');
+      if(target && target !== wrap) target.classList.add('drag-over');
+    });
+
+    wrap.addEventListener('pointerup', e => {
+      if(dragSlot === -1) return;
+      document.querySelectorAll('.circle-item.drag-over').forEach(el => el.classList.remove('drag-over'));
+
+      if(dragGhost){ dragGhost.remove(); dragGhost = null; }
+
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      const target = el?.closest('.circle-item[data-slot]');
+      if(target){
+        const targetSlot = parseInt(target.dataset.slot, 10);
+        if(targetSlot !== dragSlot) rectSwap(dragSlot, targetSlot);
+      } else {
+        wrap.style.opacity = '';
+      }
+      dragSlot = -1;
+    });
+  }
+
+  function applyRotation(){
+    if(isGridMode) return;
     circleRing.style.transform = `rotate(${rotation}deg)`;
     document.querySelectorAll('.item-inner').forEach(el=>{
       el.style.transform=`translate(-50%,-50%) rotate(${-rotation}deg)`;
     });
   }
 
-  function snapToCurrentSlot(r){
+  function snapToCurrentSlot(){
     const n=Math.max(1,count);
     rotation = 90 - (360/n)*currentSlot;
-    applyRotation(r);
+    applyRotation();
   }
+
+  const lockBtn = document.getElementById('lockBtn');
+  let locked = false;
+  lockBtn.addEventListener('click', () => {
+    locked = !locked;
+    document.body.classList.toggle('locked', locked);
+    lockBtn.classList.toggle('active', locked);
+    lockBtn.textContent = locked ? '🔒 Просмотр' : '🔓 Редактирование';
+    lockBtn.title = locked ? 'Включить редактирование' : 'Выключить редактирование';
+    if(locked) document.body.classList.remove('menu-open');
+  });
 
   // ── бургер-меню ──
   const burgerBtn = document.getElementById('burgerBtn');
@@ -611,9 +1176,18 @@
 
   function applyZoom(){
     circleWrap.style.transform = `scale(${zoom})`;
+    renderCircle();
   }
   zoomInBtn.addEventListener('click',  () => { zoom = Math.min(ZOOM_MAX, parseFloat((zoom+ZOOM_STEP).toFixed(2))); applyZoom(); });
   zoomOutBtn.addEventListener('click', () => { zoom = Math.max(ZOOM_MIN, parseFloat((zoom-ZOOM_STEP).toFixed(2))); applyZoom(); });
+
+  const RECT_STEP = 40;
+  document.getElementById('rectWPlus') .addEventListener('click', () => { rectWOffset += RECT_STEP; renderCircle(); });
+  document.getElementById('rectWMinus').addEventListener('click', () => { rectWOffset -= RECT_STEP; renderCircle(); });
+  document.getElementById('rectHPlus') .addEventListener('click', () => { rectHOffset += RECT_STEP; renderCircle(); });
+  document.getElementById('rectHMinus').addEventListener('click', () => { rectHOffset -= RECT_STEP; renderCircle(); });
+  document.getElementById('rectYPlus') .addEventListener('click', () => { rectYOffset += RECT_STEP; renderCircle(); });
+  document.getElementById('rectYMinus').addEventListener('click', () => { rectYOffset -= RECT_STEP; renderCircle(); });
 
   // зум колесом мыши над сценой
   document.getElementById('stage').addEventListener('wheel', e => {
@@ -623,6 +1197,9 @@
       : Math.max(ZOOM_MIN, parseFloat((zoom-ZOOM_STEP).toFixed(2)));
     applyZoom();
   }, { passive: false });
+
+  // перепроверяем при ресайзе окна
+  window.addEventListener('resize', () => { renderCircle(); });
 
   rotLeftBtn.addEventListener('click',()=>{
     currentSlot=(currentSlot-1+count)%count; snapToCurrentSlot();
@@ -677,29 +1254,111 @@
   loadJsonBtn.addEventListener('click',()=>{
     try{
       const parsed=JSON.parse(jsonArea.value);
-      if(!Array.isArray(parsed)) throw new Error('Ожидается массив');
-      pool=parsed.map(it=>({name:it.name||it.role||'—',img:it.img||it.image||placeholderImg('?')}));
+      // Новый формат: { roles:[...], tags:[...] }
+      // Старый формат: [...] (массив ролей)
+      const rolesArr = Array.isArray(parsed) ? parsed : (parsed.roles || []);
+      const tagsArr  = Array.isArray(parsed) ? null   : (parsed.tags  || null);
+      if(!Array.isArray(rolesArr)) throw new Error('roles должен быть массивом');
+      pool = rolesArr.map(it=>({
+        name:     it.name||it.role||'—',
+        img:      it.img||it.image||placeholderImg('?'),
+        category: it.category||'citizen',
+      }));
+      if(tagsArr && Array.isArray(tagsArr)){
+        tagPool = tagsArr.map(t => ({ name: typeof t==='string' ? t : (t.name||'—') }));
+        renderTagsList();
+      }
       renderItemsList(); renderCircle();
     }catch(err){ alert('Ошибка JSON: '+err.message); }
   });
-  exportJsonBtn.addEventListener('click',()=>{ jsonArea.value=JSON.stringify(pool,null,2); });
+  exportJsonBtn.addEventListener('click',()=>{
+    const data = {
+      roles: pool.map(it=>({ name:it.name, category:it.category||'citizen', img:it.img })),
+      tags:  tagPool.map(t=>({ name:t.name })),
+    };
+    jsonArea.value = JSON.stringify(data, null, 2);
+  });
 
   resetBtn.addEventListener('click',()=>{
     pool=[
-      {name:"Шериф",     img:placeholderImg("Ш")},
-      {name:"Доктор",    img:placeholderImg("Д")},
-      {name:"Маг",       img:placeholderImg("М")},
-      {name:"Воин",      img:placeholderImg("В")},
-      {name:"Разведчик", img:placeholderImg("Р")},
-      {name:"Торговец",  img:placeholderImg("Т")},
-      {name:"Кузнец",    img:placeholderImg("К")},
-      {name:"Жрец",      img:placeholderImg("Ж")},
+      {name:"Шериф",     img:placeholderImg("Ш"), category:"citizen"},
+      {name:"Доктор",    img:placeholderImg("Д"), category:"citizen"},
+      {name:"Маг",       img:placeholderImg("М"), category:"citizen"},
+      {name:"Воин",      img:placeholderImg("В"), category:"citizen"},
+      {name:"Разведчик", img:placeholderImg("Р"), category:"outcast"},
+      {name:"Торговец",  img:placeholderImg("Т"), category:"outcast"},
+      {name:"Кузнец",    img:placeholderImg("К"), category:"minion"},
+      {name:"Жрец",      img:placeholderImg("Ж"), category:"demon"},
     ];
     tagPool=[{name:"Отравлен"},{name:"Пьяница"},{name:"Проклят"},{name:"Подозреваемый"}];
     count=6; radius=260; rotation=90; currentSlot=0;
     assignments=[]; alive=[]; slotTags=[];
+    rectWOffset=0; rectHOffset=0; rectYOffset=0;
     countInput.value=6; radiusInput.value=260;
     renderItemsList(); renderTagsList(); renderCircle();
+  });
+
+  // ── пресеты ──
+  // Список пресетов встроен прямо сюда — работает и локально (file://) и на GitHub Pages.
+  // Чтобы добавить свой пресет: добавь объект в PRESETS и положи json-файл в папку presets/.
+  const PRESETS = [
+    
+  ];
+
+  const presetSelect  = document.getElementById('presetSelect');
+  const presetLoadBtn = document.getElementById('presetLoadBtn');
+  const presetStatus  = document.getElementById('presetStatus');
+
+  function setPresetStatus(msg, isError){
+    presetStatus.textContent = msg;
+    presetStatus.style.color = isError ? 'var(--accent2)' : 'var(--muted)';
+  }
+
+  // Заполняем список
+  PRESETS.forEach((p, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = p.name;
+    presetSelect.appendChild(opt);
+  });
+  setPresetStatus(`Пресетов: ${PRESETS.length}`);
+
+  function applyPresetData(parsed, label){
+    const rolesArr = Array.isArray(parsed) ? parsed : (parsed.roles || []);
+    const tagsArr  = Array.isArray(parsed) ? null   : (parsed.tags  || null);
+    if(!Array.isArray(rolesArr)) throw new Error('roles должен быть массивом');
+    pool = rolesArr.map(it=>({
+      name:     it.name||it.role||'—',
+      img:      it.img||it.image||placeholderImg('?'),
+      category: it.category||'citizen',
+    }));
+    if(tagsArr && Array.isArray(tagsArr)){
+      tagPool = tagsArr.map(t => ({ name: typeof t==='string' ? t : (t.name||'—') }));
+      renderTagsList();
+    }
+    renderItemsList(); renderCircle();
+    setPresetStatus(`✓ Загружен: ${label}`);
+  }
+
+  presetLoadBtn.addEventListener('click', async () => {
+    const idx = presetSelect.value;
+    if(idx === ''){ setPresetStatus('Сначала выбери пресет', true); return; }
+    const preset = PRESETS[parseInt(idx)];
+    presetLoadBtn.textContent = '…';
+    presetLoadBtn.disabled = true;
+    try {
+      // Пробуем загрузить свежий файл (работает на GitHub Pages / localhost)
+      const res = await fetch(preset.file);
+      if(!res.ok) throw new Error('fetch failed');
+      const parsed = await res.json();
+      applyPresetData(parsed, preset.name);
+    } catch(e) {
+      // Fallback: используем встроенные данные (работает локально через file://)
+      applyPresetData(preset.data, preset.name + ' (встроен)');
+    } finally {
+      presetLoadBtn.textContent = 'Загрузить';
+      presetLoadBtn.disabled = false;
+    }
   });
 
   // init
