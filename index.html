@@ -545,18 +545,18 @@
 
   // ── состояние ──
   let pool = [
-    // { name:"Шериф",     img:placeholderImg("Ш"), category:"citizen"  },
-    // { name:"Доктор",    img:placeholderImg("Д"), category:"citizen"  },
-    // { name:"Маг",       img:placeholderImg("М"), category:"citizen"  },
-    // { name:"Воин",      img:placeholderImg("В"), category:"citizen"  },
-    // { name:"Разведчик", img:placeholderImg("Р"), category:"outcast"  },
-    // { name:"Торговец",  img:placeholderImg("Т"), category:"outcast"  },
-    // { name:"Кузнец",    img:placeholderImg("К"), category:"minion"   },
-    // { name:"Жрец",      img:placeholderImg("Ж"), category:"demon"    },
+    { name:"Шериф",     img:placeholderImg("Ш"), category:"citizen"  },
+    { name:"Доктор",    img:placeholderImg("Д"), category:"citizen"  },
+    { name:"Маг",       img:placeholderImg("М"), category:"citizen"  },
+    { name:"Воин",      img:placeholderImg("В"), category:"citizen"  },
+    { name:"Разведчик", img:placeholderImg("Р"), category:"outcast"  },
+    { name:"Торговец",  img:placeholderImg("Т"), category:"outcast"  },
+    { name:"Кузнец",    img:placeholderImg("К"), category:"minion"   },
+    { name:"Жрец",      img:placeholderImg("Ж"), category:"demon"    },
   ];
   let tagPool = [
-    // { name:"Отравлен" }, { name:"Пьяница" },
-    // { name:"Проклят" },  { name:"Подозреваемый" },
+    { name:"Отравлен" }, { name:"Пьяница" },
+    { name:"Проклят" },  { name:"Подозреваемый" },
   ];
 
   let count       = 6;
@@ -1302,7 +1302,22 @@
   // Список пресетов встроен прямо сюда — работает и локально (file://) и на GitHub Pages.
   // Чтобы добавить свой пресет: добавь объект в PRESETS и положи json-файл в папку presets/.
   const PRESETS = [
-    
+    {
+      name: 'Классическая мафия',
+      file: 'presets/classic.json',
+      // Встроенные данные — используются когда fetch недоступен (file://)
+      data: {"roles":[{"name":"Шериф","category":"citizen"},{"name":"Доктор","category":"citizen"},{"name":"Детектив","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Горожанин","category":"citizen"},{"name":"Мафия","category":"minion"},{"name":"Мафия","category":"minion"},{"name":"Дон","category":"demon"},{"name":"Маньяк","category":"outcast"}],"tags":[{"name":"Подозреваемый"},{"name":"Проверен"},{"name":"Алиби"},{"name":"Под прицелом"}]}
+    },
+    {
+      name: 'Тёмное средневековье',
+      file: 'presets/medieval.json',
+      data: {"roles":[{"name":"Рыцарь","category":"citizen"},{"name":"Жрец","category":"citizen"},{"name":"Маг","category":"citizen"},{"name":"Охотник","category":"citizen"},{"name":"Крестьянин","category":"citizen"},{"name":"Крестьянин","category":"citizen"},{"name":"Изгой","category":"outcast"},{"name":"Предатель","category":"minion"},{"name":"Культист","category":"minion"},{"name":"Демон","category":"demon"},{"name":"Тёмный лорд","category":"demon"}],"tags":[{"name":"Проклят"},{"name":"Отравлен"},{"name":"Благословлён"},{"name":"Помечен"},{"name":"Пьяница"}]}
+    },
+    {
+      name: 'Sci-Fi колония',
+      file: 'presets/scifi.json',
+      data: {"roles":[{"name":"Капитан","category":"citizen"},{"name":"Медик","category":"citizen"},{"name":"Инженер","category":"citizen"},{"name":"Пилот","category":"citizen"},{"name":"Колонист","category":"citizen"},{"name":"Колонист","category":"citizen"},{"name":"Дезертир","category":"outcast"},{"name":"Шпион","category":"minion"},{"name":"Диверсант","category":"minion"},{"name":"Чужой","category":"demon"}],"tags":[{"name":"Заражён"},{"name":"Изолирован"},{"name":"Под слежкой"},{"name":"Повреждён"},{"name":"Агент"}]}
+    },
   ];
 
   const presetSelect  = document.getElementById('presetSelect');
@@ -1314,14 +1329,38 @@
     presetStatus.style.color = isError ? 'var(--accent2)' : 'var(--muted)';
   }
 
-  // Заполняем список
-  PRESETS.forEach((p, i) => {
-    const opt = document.createElement('option');
-    opt.value = i;
-    opt.textContent = p.name;
-    presetSelect.appendChild(opt);
-  });
-  setPresetStatus(`Пресетов: ${PRESETS.length}`);
+  // activePresets — текущий список (PRESETS по умолчанию, может быть заменён из manifest.json)
+  let activePresets = PRESETS;
+
+  function populatePresetSelect(list){
+    presetSelect.innerHTML = '<option value="">— выбери пресет —</option>';
+    list.forEach((p, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = p.name;
+      presetSelect.appendChild(opt);
+    });
+    setPresetStatus(`Пресетов: ${list.length}`);
+  }
+
+  // Сразу показываем встроенный список
+  populatePresetSelect(activePresets);
+
+  // Пробуем подгрузить manifest.json — если доступен, он перезаписывает список
+  // (работает на GitHub Pages / localhost; на file:// молча игнорируется)
+  fetch('manifest.json')
+    .then(r => { if(!r.ok) throw new Error(); return r.json(); })
+    .then(manifest => {
+      if(!Array.isArray(manifest.presets) || manifest.presets.length === 0) return;
+      // Пресеты из манифеста: ищем встроенный data по совпадению file, остальным data=undefined
+      activePresets = manifest.presets.map(p => {
+        const builtin = PRESETS.find(b => b.file === p.file);
+        return { name: p.name, file: p.file, data: builtin ? builtin.data : undefined };
+      });
+      populatePresetSelect(activePresets);
+      setPresetStatus(`Из manifest.json: ${activePresets.length} пресетов`);
+    })
+    .catch(() => { /* manifest.json недоступен — оставляем встроенный список */ });
 
   function applyPresetData(parsed, label){
     const rolesArr = Array.isArray(parsed) ? parsed : (parsed.roles || []);
@@ -1343,7 +1382,7 @@
   presetLoadBtn.addEventListener('click', async () => {
     const idx = presetSelect.value;
     if(idx === ''){ setPresetStatus('Сначала выбери пресет', true); return; }
-    const preset = PRESETS[parseInt(idx)];
+    const preset = activePresets[parseInt(idx)];
     presetLoadBtn.textContent = '…';
     presetLoadBtn.disabled = true;
     try {
@@ -1353,8 +1392,9 @@
       const parsed = await res.json();
       applyPresetData(parsed, preset.name);
     } catch(e) {
-      // Fallback: используем встроенные данные (работает локально через file://)
-      applyPresetData(preset.data, preset.name + ' (встроен)');
+      // Fallback: встроенные данные (работает локально через file://)
+      if(preset.data) applyPresetData(preset.data, preset.name + ' (встроен)');
+      else setPresetStatus('Файл недоступен локально и встроенных данных нет', true);
     } finally {
       presetLoadBtn.textContent = 'Загрузить';
       presetLoadBtn.disabled = false;
