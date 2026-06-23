@@ -1788,26 +1788,33 @@
     })
     .catch(() => { /* manifest.json недоступен — оставляем встроенный список */ });
 
-  function applyPresetData(parsed, label){
+  function applyPresetData(parsed, label) {
     const rolesArr = Array.isArray(parsed) ? parsed : (parsed.roles || []);
-    const tagsArr  = Array.isArray(parsed) ? null   : (parsed.tags  || null);
-    const orderArr = Array.isArray(parsed) ? null   : (parsed.order || null);
-    if(!Array.isArray(rolesArr)) throw new Error('roles должен быть массивом');
-    pool = rolesArr.map(it=>({
-      name:     it.name||it.role||'—',
-      img:      it.img||it.image||placeholderImg('?'),
-      category: it.category||'citizen',
+    const tagsArr = Array.isArray(parsed) ? null : (parsed.tags || null);
+    const orderArr = Array.isArray(parsed) ? null : (parsed.order || null);
+    // ↓ добавить эти две строки:
+    const n1Arr = Array.isArray(parsed) ? null : (parsed.nightOrder1 || null);
+    const nNArr = Array.isArray(parsed) ? null : (parsed.nightOrderN || null);
+
+    if (!Array.isArray(rolesArr)) throw new Error('roles должен быть массивом');
+    pool = rolesArr.map(it => ({
+      name: it.name || it.role || '—',
+      img: it.img || it.image || placeholderImg('?'),
+      category: it.category || 'citizen',
     }));
-    if(tagsArr && Array.isArray(tagsArr)){
-      tagPool = tagsArr.map(t => ({ name: typeof t==='string' ? t : (t.name||'—') }));
+    if (tagsArr && Array.isArray(tagsArr)) {
+      tagPool = tagsArr.map(t => ({ name: typeof t === 'string' ? t : (t.name || '—') }));
       renderTagsList();
     }
-    if(orderArr && Array.isArray(orderArr)){
-      roleOrder = orderArr.map(o => typeof o==='string' ? {name:o} : {name:o.name||'—', category:o.category||null});
-    } else {
-      roleOrder = [];
-    }
+    if (orderArr && Array.isArray(orderArr)) {
+      roleOrder = orderArr.map(o => typeof o === 'string' ? { name: o } : { name: o.name || '—', category: o.category || null });
+    } else { roleOrder = []; }
+    // ↓ добавить эти строки:
+    nightOrder1 = n1Arr && Array.isArray(n1Arr) ? n1Arr.map(o => typeof o === 'string' ? { name: o, category: 'citizen' } : { name: o.name || '—', category: o.category || 'citizen' }) : [];
+    nightOrderN = nNArr && Array.isArray(nNArr) ? nNArr.map(o => typeof o === 'string' ? { name: o, category: 'citizen' } : { name: o.name || '—', category: o.category || 'citizen' }) : [];
+
     renderOrderPanel();
+    renderNightEditors(); renderNightPanels(); // ↓ добавить вызов
     renderItemsList(); renderCircle();
     setPresetStatus(`✓ Загружен: ${label}`);
   }
